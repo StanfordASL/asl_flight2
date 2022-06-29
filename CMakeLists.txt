@@ -24,6 +24,10 @@ endif()
 add_executable(controller_base src/controller_base.cpp)
 ament_target_dependencies(controller_base rclcpp px4_ros_com px4_msgs Eigen3)
 
+install(TARGETS
+    controller_base
+    DESTINATION lib/${PROJECT_NAME})
+
 ament_export_dependencies(eigen3_cmake_module)
 ament_export_dependencies(Eigen3)
 

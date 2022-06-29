@@ -1,5 +1,9 @@
 #include "controller_base.hpp"
 
+#include <chrono>
+#include <functional>
+
+using namespace std::chrono_literals;
 
 ControllerBase::ControllerBase(const std::string& node_name, const size_t qos_history_depth_)
     : rclcpp::Node(node_name) {
@@ -28,6 +32,8 @@ ControllerBase::ControllerBase(const std::string& node_name, const size_t qos_hi
         qos_history_depth_,
         std::bind(&ControllerBase::callbackTimeSync, this, std::placeholders::_1)
     );
+
+    timer_ = this->create_wall_timer(1000ms, std::bind(&ControllerBase::callbackTimer, this));
 }
 
 void ControllerBase::callbackTimer() {
