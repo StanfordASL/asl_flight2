@@ -1,5 +1,7 @@
 #pragma once
 
+#include <atomic>
+
 #include <Eigen/Dense>
 #include <rclcpp/rclcpp.hpp>
 
@@ -81,6 +83,8 @@ protected:
     rclcpp::Subscription<px4_msgs::msg::VehicleAngularVelocity>::SharedPtr sub_angvel_;
     rclcpp::Subscription<px4_msgs::msg::Timesync>::SharedPtr sub_timesync_;
 
+    // Synced Timestamp
+    std::atomic<uint64_t> timestamp_;
 
     // Callbacks
 
