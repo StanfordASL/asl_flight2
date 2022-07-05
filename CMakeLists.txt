@@ -22,6 +22,9 @@ endif()
 
 # executables
 add_executable(controller_base src/controller_base.cpp)
+target_include_directories(controller_base PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
 ament_target_dependencies(controller_base rclcpp px4_ros_com px4_msgs Eigen3)
 
 install(TARGETS

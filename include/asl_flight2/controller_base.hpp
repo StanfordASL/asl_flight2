@@ -10,7 +10,6 @@
 #include <px4_msgs/msg/vehicle_local_position.hpp>
 #include <px4_msgs/msg/vehicle_attitude.hpp>
 #include <px4_msgs/msg/vehicle_angular_velocity.hpp>
-// #include <px4_msgs/msg/actuator_direct_control.hpp>
 
 
 const Eigen::Quaterniond ROT_FRD_FLU
