@@ -10,6 +10,7 @@
 #include <px4_msgs/msg/vehicle_local_position.hpp>
 #include <px4_msgs/msg/vehicle_attitude.hpp>
 #include <px4_msgs/msg/vehicle_angular_velocity.hpp>
+#include <px4_msgs/msg/vehicle_odometry.hpp>
 
 
 const Eigen::Quaterniond ROT_FRD_FLU
@@ -56,41 +57,38 @@ protected:
     //  FLU -- Forward-Left-Up
 
     // Position
-    Eigen::Vector3d pos_ned_;   // position in inertial NED frame
-    Eigen::Vector3d pos_nwu_;   // position in inertial NWU frame
+    mutable Eigen::Vector3d pos_ned_;   // position in inertial NED frame
+    mutable Eigen::Vector3d pos_nwu_;   // position in inertial NWU frame
 
     // Linear velocity
-    Eigen::Vector3d vel_ned_;   // velocity in inertial NED frame
-    Eigen::Vector3d vel_nwu_;   // velocity in inertial NWU frame
-    Eigen::Vector3d vel_frd_;   // velocity in body FRD frame
-    Eigen::Vector3d vel_flu_;   // velocity in body FLU frame
+    mutable Eigen::Vector3d vel_ned_;   // velocity in inertial NED frame
+    mutable Eigen::Vector3d vel_nwu_;   // velocity in inertial NWU frame
+    mutable Eigen::Vector3d vel_frd_;   // velocity in body FRD frame
+    mutable Eigen::Vector3d vel_flu_;   // velocity in body FLU frame
 
     // Attitude (NOTE: Eigen quaternions are stored as [x, y, z, w])
-    Eigen::Quaterniond att_ned_frd_;
-    Eigen::Quaterniond att_nwu_flu_;
+    mutable Eigen::Quaterniond att_ned_frd_;
+    mutable Eigen::Quaterniond att_nwu_flu_;
 
     // Angular velocity (FLU w.r.t. NWU, and FRD w.r.t. NED)
-    Eigen::Vector3d angvel_flu_;
-    Eigen::Vector3d angvel_frd_;
-
-    // Timers
-    rclcpp::TimerBase::SharedPtr timer_;
-
-    // PX4 message subscriptions
-    rclcpp::Subscription<px4_msgs::msg::VehicleLocalPosition>::SharedPtr sub_pos_vel_;
-    rclcpp::Subscription<px4_msgs::msg::VehicleAttitude>::SharedPtr sub_att_;
-    rclcpp::Subscription<px4_msgs::msg::VehicleAngularVelocity>::SharedPtr sub_angvel_;
-    rclcpp::Subscription<px4_msgs::msg::Timesync>::SharedPtr sub_timesync_;
+    mutable Eigen::Vector3d angvel_flu_;
+    mutable Eigen::Vector3d angvel_frd_;
 
     // Synced Timestamp
-    std::atomic<uint64_t> timestamp_;
+    mutable std::atomic<uint64_t> timestamp_;
+
+    // PX4 message subscriptions
+    const rclcpp::Subscription<px4_msgs::msg::VehicleOdometry>::SharedPtr sub_odom_;
+    const rclcpp::Subscription<px4_msgs::msg::Timesync>::SharedPtr sub_timesync_;
 
     // Callbacks
 
     /**
-     * @brief      { function_description }
+     * @brief callback handler for reading state from the flight controller
+     *
+     * @param msg message containing odometry data
      */
-    virtual void callbackTimer();
+    virtual void VehicleOdometryCallback(const px4_msgs::msg::VehicleOdometry::SharedPtr msg);
 
     /**
      * @brief      { function_description }
@@ -118,5 +116,5 @@ protected:
      *
      * @param[in]  msg   The message
      */
-    virtual void callbackTimeSync(const px4_msgs::msg::Timesync::UniquePtr msg);
+    virtual void TimeSyncCallback(const px4_msgs::msg::Timesync::UniquePtr msg) const;
 };

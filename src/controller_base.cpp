@@ -4,40 +4,22 @@
 #include <functional>
 
 using namespace std::chrono_literals;
+using std::placeholders::_1;
 
 ControllerBase::ControllerBase(const std::string& node_name, const size_t qos_history_depth_)
-    : rclcpp::Node(node_name) {
+    : rclcpp::Node(node_name),
+      sub_odom_(create_subscription<px4_msgs::msg::VehicleOdometry>(
+        "/fmu/vehicle_odometry/out",
+        qos_history_depth_,
+        std::bind(&ControllerBase::VehicleOdometryCallback, this, _1)
+      )),
+      sub_timesync_(create_subscription<px4_msgs::msg::Timesync>(
+        "/fmu/timesync/out",
+        qos_history_depth_,
+        std::bind(&ControllerBase::TimeSyncCallback, this, _1)
+      )) {
     // Create PX4 message subscriptions
     // TODO: understand ROS2 QoS profiles better
-    sub_pos_vel_ = create_subscription<px4_msgs::msg::VehicleLocalPosition>(
-        "position_and_velocity",
-        qos_history_depth_,
-        std::bind(&ControllerBase::callbackPositionAndVelocity, this, std::placeholders::_1)
-    );
-
-    sub_att_ = create_subscription<px4_msgs::msg::VehicleAttitude>(
-        "attitude",
-        qos_history_depth_,
-        std::bind(&ControllerBase::callbackAttitude, this, std::placeholders::_1)
-    );
-
-    sub_angvel_ = create_subscription<px4_msgs::msg::VehicleAngularVelocity>(
-        "angular_velocity",
-        qos_history_depth_,
-        std::bind(&ControllerBase::callbackAngularVelocity, this, std::placeholders::_1)
-    );
-
-    sub_timesync_ = create_subscription<px4_msgs::msg::Timesync>(
-        "time_sync",
-        qos_history_depth_,
-        std::bind(&ControllerBase::callbackTimeSync, this, std::placeholders::_1)
-    );
-
-    timer_ = this->create_wall_timer(1000ms, std::bind(&ControllerBase::callbackTimer, this));
-}
-
-void ControllerBase::callbackTimer() {
-    RCLCPP_INFO(this->get_logger(), "Hello from ROS2");
 }
 
 void ControllerBase::callbackPositionAndVelocity(const px4_msgs::msg::VehicleLocalPosition::SharedPtr msg) {
@@ -60,7 +42,7 @@ void ControllerBase::callbackAngularVelocity(const px4_msgs::msg::VehicleAngular
     angvel_flu_ = transform_flip_z(angvel_frd_);
 }
 
-void ControllerBase::callbackTimeSync(const px4_msgs::msg::Timesync::UniquePtr msg) {
+void ControllerBase::TimeSyncCallback(const px4_msgs::msg::Timesync::UniquePtr msg) const {
     timestamp_.store(msg->timestamp);
 }
 
