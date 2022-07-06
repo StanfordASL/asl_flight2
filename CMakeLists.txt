@@ -22,15 +22,21 @@ if(BUILD_TESTING)
   ament_lint_auto_find_test_dependencies()
 endif()
 
-# executables
-add_executable(controller_base src/controller_base.cpp)
-target_include_directories(controller_base PUBLIC
+# libraries
+add_library(controller_lib src/controller_base.cpp)
+target_include_directories(controller_lib PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
-ament_target_dependencies(controller_base rclcpp px4_ros_com px4_msgs Eigen3 geometry_msgs tf2_eigen)
+ament_target_dependencies(controller_lib rclcpp px4_ros_com px4_msgs Eigen3 geometry_msgs tf2_eigen)
 
+# executables
+add_executable(takeoff_example src/takeoff_example.cpp)
+target_link_libraries(takeoff_example controller_lib)
+
+# installation
 install(TARGETS
-    controller_base
+    controller_lib
+    takeoff_example
     DESTINATION lib/${PROJECT_NAME})
 
 ament_export_dependencies(eigen3_cmake_module)

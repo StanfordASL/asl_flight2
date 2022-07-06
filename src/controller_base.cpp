@@ -13,8 +13,6 @@ using namespace px4_msgs::msg;
 using namespace geometry_msgs::msg;
 using std::placeholders::_1;
 
-const Eigen::Quaterniond nwu_R_ned(Eigen::AngleAxisd(M_PI, Eigen::Vector3d::UnitX()));
-
 // TODO: understand ROS2 QoS profiles better
 ControllerBase::ControllerBase(const std::string& node_name, const size_t qos_history_depth)
     : rclcpp::Node(node_name),
@@ -28,32 +26,30 @@ ControllerBase::ControllerBase(const std::string& node_name, const size_t qos_hi
         qos_history_depth,
         std::bind(&ControllerBase::TimeSyncCallback, this, _1)
       )),
-      pose_pub_(create_publisher<PoseStamped>("pose", qos_history_depth)) {
-}
+      pose_pub_(create_publisher<PoseStamped>("pose", qos_history_depth)),
+      offboard_mode_pub_(create_publisher<OffboardControlMode>(
+        "/fmu/offboard_control_mode/in", qos_history_depth)),
+      trajectory_pub_(create_publisher<TrajectorySetpoint>(
+        "/fmu/trajectory_setpoint/in", qos_history_depth)),
+      vehicle_cmd_pub_(create_publisher<VehicleCommand>(
+        "/fmu/vehicle_command/in", qos_history_depth)) {}
 
 void ControllerBase::VehicleOdometryCallback(const VehicleOdometry::SharedPtr msg) const {
   // position
-  const Eigen::Vector3d world_t_body_ned(msg->x, msg->y, msg->z);
-  world_t_body_ = nwu_R_ned * world_t_body_ned;
+  world_t_body_ = {msg->x, msg->y, msg->z};
 
   // orientation
-  const Eigen::Quaterniond world_R_body_ned =
-    px4_ros_com::frame_transforms::utils::quaternion::array_to_eigen_quat(msg->q);
-  world_R_body_ = nwu_R_ned * world_R_body_ned.normalized() * nwu_R_ned.conjugate();
+  world_R_body_ = px4_ros_com::frame_transforms::utils::quaternion::array_to_eigen_quat(msg->q);
 
   // velocity
-  const Eigen::Vector3d v_body_ned(msg->vx, msg->vy, msg->vz);
-  v_body_ = nwu_R_ned * v_body_ned;
-  v_world_ = world_R_body_ * v_body_;
+  v_body_ = {msg->vx, msg->vy, msg->vz};
 
   // anguler velocity
-  const Eigen::Vector3d w_body_ned(msg->rollspeed, msg->pitchspeed, msg->yawspeed);
-  w_body_ = nwu_R_ned * w_body_ned;
-  w_world_ = world_R_body_ * w_body_;
+  w_body_ = {msg->rollspeed, msg->pitchspeed, msg->yawspeed};
 
   // re-publish pose for rviz visualization
   PoseStamped pose_msg{};
-  pose_msg.header.frame_id = "world";
+  pose_msg.header.frame_id = "world_ned";
   pose_msg.header.stamp = rclcpp::Clock().now();
   pose_msg.pose.position = tf2::toMsg(world_t_body_);
   pose_msg.pose.orientation = tf2::toMsg(world_R_body_);
@@ -61,17 +57,66 @@ void ControllerBase::VehicleOdometryCallback(const VehicleOdometry::SharedPtr ms
 }
 
 void ControllerBase::TimeSyncCallback(const Timesync::SharedPtr msg) const {
-  const uint64_t time_sync = msg->timestamp;
-  const uint64_t time_now = rclcpp::Clock().now().nanoseconds() / 1e3;
   timestamp_synced_.store(msg->timestamp);
-  RCLCPP_INFO(this->get_logger(), "%lu %lu %ld", time_sync, time_now, (int64_t)time_now - time_sync);
+}
+
+void ControllerBase::SetPosition(const Eigen::Vector3d& position, const double& yaw) const {
+  const uint64_t timestamp = rclcpp::Clock().now().nanoseconds() / 1000;
+
+  OffboardControlMode mode_msg{};
+  mode_msg.timestamp = timestamp;
+  mode_msg.position = true;
+
+  TrajectorySetpoint traj_msg{};
+  traj_msg.timestamp = timestamp;
+  traj_msg.position[0] = position.x();
+  traj_msg.position[1] = position.y();
+  traj_msg.position[2] = position.z();
+  traj_msg.yaw = yaw;
+
+  offboard_mode_pub_->publish(mode_msg);
+  trajectory_pub_->publish(traj_msg);
+}
+
+inline VehicleCommand DefaultVehicleCommand() {
+  VehicleCommand msg{};
+  msg.timestamp = rclcpp::Clock().now().nanoseconds() / 1000;
+  msg.target_system = 1;
+  msg.target_component = 1;
+  msg.source_system = 1;
+  msg.source_component = 1;
+  msg.from_external = true;
+
+  return msg;
+}
+
+void ControllerBase::EnableOffboardCtrl() const {
+  constexpr float base_mode_custom = 1;
+  constexpr float main_mode_offboard = 6;
+
+  VehicleCommand msg = DefaultVehicleCommand();
+  msg.command = VehicleCommand::VEHICLE_CMD_DO_SET_MODE;
+  msg.param1 = base_mode_custom;
+  msg.param2 = main_mode_offboard;
+
+  vehicle_cmd_pub_->publish(msg);
+}
+
+void ControllerBase::Arm() const {
+  VehicleCommand msg = DefaultVehicleCommand();
+  msg.command = VehicleCommand::VEHICLE_CMD_COMPONENT_ARM_DISARM;
+  msg.param1 = VehicleCommand::ARMING_ACTION_ARM;
+
+  vehicle_cmd_pub_->publish(msg);
+}
+
+void ControllerBase::Disarm() const {
+  VehicleCommand msg = DefaultVehicleCommand();
+  msg.command = VehicleCommand::VEHICLE_CMD_COMPONENT_ARM_DISARM;
+  msg.param1 = VehicleCommand::ARMING_ACTION_DISARM;
+
+  vehicle_cmd_pub_->publish(msg);
 }
 
 } // namespace asl
 
-int main(int argc, char* argv[]) {
-    rclcpp::init(argc, argv);
-    rclcpp::spin(std::make_shared<asl::ControllerBase>("controller_base"));
-    rclcpp::shutdown();
-    return 0;
-}

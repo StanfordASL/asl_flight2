@@ -6,10 +6,13 @@
 #include <Eigen/Geometry>
 #include <rclcpp/rclcpp.hpp>
 
-#include <px4_msgs/msg/timesync.hpp>
-#include <px4_msgs/msg/vehicle_odometry.hpp>
-
 #include <geometry_msgs/msg/pose_stamped.hpp>
+
+#include <px4_msgs/msg/offboard_control_mode.hpp>
+#include <px4_msgs/msg/timesync.hpp>
+#include <px4_msgs/msg/trajectory_setpoint.hpp>
+#include <px4_msgs/msg/vehicle_command.hpp>
+#include <px4_msgs/msg/vehicle_odometry.hpp>
 
 
 namespace asl {
@@ -32,20 +35,18 @@ class ControllerBase : public rclcpp::Node {
   virtual ~ControllerBase() = default;
 
  protected:
-  // working in ROS default frame NWU -- North-West-Up
+  // working in PX4 default frame NED -- North-East-Down
 
   // position
-  mutable Eigen::Vector3d world_t_body_; // pose position
-
-  // linear velocity
-  mutable Eigen::Vector3d v_world_; // velocity in inertial frame
-  mutable Eigen::Vector3d v_body_;  // velocity in inertial NED frame
+  mutable Eigen::Vector3d world_t_body_;
 
   // orientation
   mutable Eigen::Quaterniond world_R_body_;
 
+  // linear velocity
+  mutable Eigen::Vector3d v_body_;
+
   // angular velocity
-  mutable Eigen::Vector3d w_world_;
   mutable Eigen::Vector3d w_body_;
 
   // Synced Timestamp
@@ -55,7 +56,11 @@ class ControllerBase : public rclcpp::Node {
   const rclcpp::Subscription<px4_msgs::msg::VehicleOdometry>::SharedPtr sub_odom_;
   const rclcpp::Subscription<px4_msgs::msg::Timesync>::SharedPtr sub_timesync_;
 
+  // PX4 message publishers
   const rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr pose_pub_;
+  const rclcpp::Publisher<px4_msgs::msg::OffboardControlMode>::SharedPtr offboard_mode_pub_;
+  const rclcpp::Publisher<px4_msgs::msg::TrajectorySetpoint>::SharedPtr trajectory_pub_;
+  const rclcpp::Publisher<px4_msgs::msg::VehicleCommand>::SharedPtr vehicle_cmd_pub_;
 
   // Callbacks
 
@@ -66,12 +71,20 @@ class ControllerBase : public rclcpp::Node {
    */
   void VehicleOdometryCallback(const px4_msgs::msg::VehicleOdometry::SharedPtr msg) const;
 
-   /**
-   * @brief      { function_description }
-   *
-   * @param[in]  msg   The message
-   */
+  /**
+  * @brief      { function_description }
+  *
+  * @param[in]  msg   The message
+  */
   void TimeSyncCallback(const px4_msgs::msg::Timesync::SharedPtr msg) const;
+
+  void SetPosition(const Eigen::Vector3d& position, const double& yaw = 0) const;
+
+  void EnableOffboardCtrl() const;
+
+  void Arm() const;
+
+  void Disarm() const;
 };
 
 } // namespace asl
