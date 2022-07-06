@@ -72,18 +72,34 @@ class ControllerBase : public rclcpp::Node {
   void VehicleOdometryCallback(const px4_msgs::msg::VehicleOdometry::SharedPtr msg) const;
 
   /**
-  * @brief      { function_description }
+  * @brief callback for getting synchronized (10Hz) timestamp
+  * @TODO(alvin): this does not seem necessary
   *
   * @param[in]  msg   The message
   */
   void TimeSyncCallback(const px4_msgs::msg::Timesync::SharedPtr msg) const;
 
+  /**
+   * @brief send target position to flight controller
+   *
+   * @param position  3D position in NED
+   * @param yaw       yaw angle in radians (NED -> clockwise is positive)
+   */
   void SetPosition(const Eigen::Vector3d& position, const double& yaw = 0) const;
 
+  /**
+   * @brief enable offboard control
+   */
   void EnableOffboardCtrl() const;
 
+  /**
+   * @brief arm the drone
+   */
   void Arm() const;
 
+  /**
+   * @brief disarm the drone
+   */
   void Disarm() const;
 };
 
