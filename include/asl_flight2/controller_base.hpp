@@ -1,7 +1,5 @@
 #pragma once
 
-#include <atomic>
-
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
 #include <rclcpp/rclcpp.hpp>
@@ -13,6 +11,8 @@
 #include <px4_msgs/msg/trajectory_setpoint.hpp>
 #include <px4_msgs/msg/vehicle_command.hpp>
 #include <px4_msgs/msg/vehicle_odometry.hpp>
+#include <px4_msgs/msg/vehicle_status.hpp>
+#include <px4_msgs/msg/vehicle_control_mode.hpp>
 
 
 namespace asl {
@@ -50,11 +50,17 @@ class ControllerBase : public rclcpp::Node {
   mutable Eigen::Vector3d w_body_;
 
   // Synced Timestamp
-  mutable std::atomic<uint64_t> timestamp_synced_;
+  mutable uint64_t timestamp_synced_;
+
+  // vehicle states
+  mutable px4_msgs::msg::VehicleControlMode vehicle_ctrl_mode_;
+  mutable px4_msgs::msg::VehicleStatus vehicle_status_;
 
   // PX4 message subscriptions
-  const rclcpp::Subscription<px4_msgs::msg::VehicleOdometry>::SharedPtr sub_odom_;
   const rclcpp::Subscription<px4_msgs::msg::Timesync>::SharedPtr sub_timesync_;
+  const rclcpp::Subscription<px4_msgs::msg::VehicleControlMode>::SharedPtr sub_ctrl_mode_;
+  const rclcpp::Subscription<px4_msgs::msg::VehicleOdometry>::SharedPtr sub_odom_;
+  const rclcpp::Subscription<px4_msgs::msg::VehicleStatus>::SharedPtr sub_status_;
 
   // PX4 message publishers
   const rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr pose_pub_;

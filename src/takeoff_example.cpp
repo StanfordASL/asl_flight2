@@ -8,10 +8,12 @@ class TakeoffController : public asl::ControllerBase {
  public:
   TakeoffController() : ControllerBase("takeoff_example") {
     ctrl_timer_ = this->create_wall_timer(1ms, [this]() {
+      RCLCPP_INFO(this->get_logger(), "hi");
       SetPosition({0., 0., -1.}, 0.);
     });
 
-    rclcpp::sleep_for(1s);
+    rclcpp::sleep_for(5s);
+    RCLCPP_WARN(this->get_logger(), "Waked Up");
 
     EnableOffboardCtrl();
     Arm();

@@ -23,7 +23,7 @@ if(BUILD_TESTING)
 endif()
 
 # libraries
-add_library(controller_lib src/controller_base.cpp)
+add_library(controller_lib src/controller_base.cpp src/simple_controller.cpp)
 target_include_directories(controller_lib PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)

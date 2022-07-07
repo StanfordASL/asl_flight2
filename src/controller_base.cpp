@@ -16,15 +16,25 @@ using std::placeholders::_1;
 // TODO: understand ROS2 QoS profiles better
 ControllerBase::ControllerBase(const std::string& node_name, const size_t qos_history_depth)
     : rclcpp::Node(node_name),
+      sub_timesync_(create_subscription<Timesync>(
+        "/fmu/timesync/out",
+        qos_history_depth,
+        std::bind(&ControllerBase::TimeSyncCallback, this, _1)
+      )),
+      sub_ctrl_mode_(create_subscription<VehicleControlMode>(
+        "/fmu/vehicle_control_mode/out",
+        qos_history_depth,
+        [this](const VehicleControlMode::SharedPtr msg) { vehicle_ctrl_mode_ = *msg; }
+      )),
       sub_odom_(create_subscription<VehicleOdometry>(
         "/fmu/vehicle_odometry/out",
         qos_history_depth,
         std::bind(&ControllerBase::VehicleOdometryCallback, this, _1)
       )),
-      sub_timesync_(create_subscription<Timesync>(
-        "/fmu/timesync/out",
+      sub_status_(create_subscription<VehicleStatus>(
+        "/fmu/vehicle_status/out",
         qos_history_depth,
-        std::bind(&ControllerBase::TimeSyncCallback, this, _1)
+        [this](const VehicleStatus::SharedPtr msg) { vehicle_status_ = *msg; }
       )),
       pose_pub_(create_publisher<PoseStamped>("pose", qos_history_depth)),
       offboard_mode_pub_(create_publisher<OffboardControlMode>(
@@ -57,7 +67,7 @@ void ControllerBase::VehicleOdometryCallback(const VehicleOdometry::SharedPtr ms
 }
 
 void ControllerBase::TimeSyncCallback(const Timesync::SharedPtr msg) const {
-  timestamp_synced_.store(msg->timestamp);
+  timestamp_synced_ = msg->timestamp;
 }
 
 void ControllerBase::SetPosition(const Eigen::Vector3d& position, const double& yaw) const {
@@ -76,6 +86,8 @@ void ControllerBase::SetPosition(const Eigen::Vector3d& position, const double& 
 
   offboard_mode_pub_->publish(mode_msg);
   trajectory_pub_->publish(traj_msg);
+
+  RCLCPP_DEBUG(this->get_logger(), "Sent trajectory setpoint");
 }
 
 inline VehicleCommand DefaultVehicleCommand() {
@@ -100,6 +112,8 @@ void ControllerBase::EnableOffboardCtrl() const {
   msg.param2 = main_mode_offboard;
 
   vehicle_cmd_pub_->publish(msg);
+
+  RCLCPP_INFO(this->get_logger(), "Offboard control enabled");
 }
 
 void ControllerBase::Arm() const {
@@ -108,6 +122,8 @@ void ControllerBase::Arm() const {
   msg.param1 = VehicleCommand::ARMING_ACTION_ARM;
 
   vehicle_cmd_pub_->publish(msg);
+
+  RCLCPP_INFO(this->get_logger(), "Armed");
 }
 
 void ControllerBase::Disarm() const {
@@ -116,6 +132,8 @@ void ControllerBase::Disarm() const {
   msg.param1 = VehicleCommand::ARMING_ACTION_DISARM;
 
   vehicle_cmd_pub_->publish(msg);
+
+  RCLCPP_INFO(this->get_logger(), "Disarmed");
 }
 
 } // namespace asl
