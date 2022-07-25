@@ -1,5 +1,7 @@
 #pragma once
 
+#include <atomic>
+
 #include <Eigen/Dense>
 #include <rclcpp/rclcpp.hpp>
 
@@ -8,7 +10,6 @@
 #include <px4_msgs/msg/vehicle_local_position.hpp>
 #include <px4_msgs/msg/vehicle_attitude.hpp>
 #include <px4_msgs/msg/vehicle_angular_velocity.hpp>
-// #include <px4_msgs/msg/actuator_direct_control.hpp>
 
 
 const Eigen::Quaterniond ROT_FRD_FLU
@@ -81,6 +82,8 @@ protected:
     rclcpp::Subscription<px4_msgs::msg::VehicleAngularVelocity>::SharedPtr sub_angvel_;
     rclcpp::Subscription<px4_msgs::msg::Timesync>::SharedPtr sub_timesync_;
 
+    // Synced Timestamp
+    std::atomic<uint64_t> timestamp_;
 
     // Callbacks
 
