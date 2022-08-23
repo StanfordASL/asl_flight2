@@ -33,10 +33,18 @@ ament_target_dependencies(controller_lib rclcpp px4_ros_com px4_msgs Eigen3 geom
 add_executable(takeoff_example src/takeoff_example.cpp)
 target_link_libraries(takeoff_example controller_lib)
 
+add_executable(test_command src/test_command.cpp)
+target_link_libraries(test_command controller_lib)
+
+add_executable(rc_controller src/rc_controller.cpp)
+target_link_libraries(rc_controller controller_lib)
+
 # installation
 install(TARGETS
     controller_lib
     takeoff_example
+    test_command
+    rc_controller
     DESTINATION lib/${PROJECT_NAME})
 
 ament_export_dependencies(eigen3_cmake_module)

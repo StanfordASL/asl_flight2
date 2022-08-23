@@ -13,7 +13,7 @@ SimpleController::SimpleController(const std::string& node_name)
 
 }
 
-void SimpleController::SetpointPublishLoop() const {
+void SimpleController::SetpointPublishLoop() {
   SetPosition(position_setpoint_, yaw_setpoint_);
 }
 

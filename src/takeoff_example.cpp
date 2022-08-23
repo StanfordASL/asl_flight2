@@ -15,8 +15,8 @@ class TakeoffController : public asl::ControllerBase {
     rclcpp::sleep_for(5s);
     RCLCPP_WARN(this->get_logger(), "Waked Up");
 
-    EnableOffboardCtrl();
-    Arm();
+    this->SetOffboardMode();
+    this->Arm();
   }
 
  private:

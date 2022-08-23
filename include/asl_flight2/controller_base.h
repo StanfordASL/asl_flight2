@@ -56,6 +56,10 @@ class ControllerBase : public rclcpp::Node {
   mutable px4_msgs::msg::VehicleControlMode vehicle_ctrl_mode_;
   mutable px4_msgs::msg::VehicleStatus vehicle_status_;
 
+  px4_msgs::msg::OffboardControlMode ob_ctrl_mode_;
+  px4_msgs::msg::TrajectorySetpoint ob_setpoint_;
+  rclcpp::TimerBase::SharedPtr setpoint_loop_timer_;
+
   // PX4 message subscriptions
   const rclcpp::Subscription<px4_msgs::msg::Timesync>::SharedPtr sub_timesync_;
   const rclcpp::Subscription<px4_msgs::msg::VehicleControlMode>::SharedPtr sub_ctrl_mode_;
@@ -67,6 +71,17 @@ class ControllerBase : public rclcpp::Node {
   const rclcpp::Publisher<px4_msgs::msg::OffboardControlMode>::SharedPtr offboard_mode_pub_;
   const rclcpp::Publisher<px4_msgs::msg::TrajectorySetpoint>::SharedPtr trajectory_pub_;
   const rclcpp::Publisher<px4_msgs::msg::VehicleCommand>::SharedPtr vehicle_cmd_pub_;
+
+  // control modes
+  enum trajectory_ctrl_mode_e {
+    POSITION,
+    POSITION_VELOCITY,
+    POSITION_VELOCITY_ACCELERATION,
+    VELOCITY,
+    VELOCITY_ALTITUDE,
+    VELOCITY_ALTITUDE_ACCELERATION,
+    ACCELERATION,
+  };
 
   // Callbacks
 
@@ -88,15 +103,57 @@ class ControllerBase : public rclcpp::Node {
   /**
    * @brief send target position to flight controller
    *
-   * @param position  3D position in NED
+   * @param position  3D position in global NED frame
    * @param yaw       yaw angle in radians (NED -> clockwise is positive)
    */
-  void SetPosition(const Eigen::Vector3d& position, const double& yaw = 0) const;
+  void SetPosition(const Eigen::Vector3d& position, const double& yaw = 0);
 
   /**
-   * @brief enable offboard control
+   * @brief send target velocity to flight controller
+   *
+   * @param velocity  3D velocity in global NED frame
+   * @param yaw_rate  yaw velocity in rad/s (NED -> clockwise is positive)
    */
-  void EnableOffboardCtrl() const;
+  void SetVelocity(const Eigen::Vector3d& velocity, const double& yaw_rate = 0);
+
+  /**
+   * @brief send target altitude to flight controller
+   *
+   * @param altitude altitude in [m] (positive going upwards)
+   */
+  void SetAltitude(const double& altitude);
+
+  /**
+   * @brief set trajectory setpoint control mode
+   *
+   * @param mode see trajectory_ctrl_mode_e
+   */
+  void SetTrajCtrlMode(const trajectory_ctrl_mode_e& mode);
+
+  /**
+   * @brief stop setpoint loop timer
+   */
+  void StopSetpointLoop();
+
+  /**
+   * @brief set flight mode
+   *
+   * @param main_mode
+   * @param sub_mode
+   *
+   * @see px4_custom_mode.h for mode definitions
+   */
+  void SetFlightMode(float main_mode, float sub_mode = NAN) const;
+
+  /**
+   * @brief switch to offboard control mode
+   */
+  void SetOffboardMode() const;
+
+  /**
+   * @brief switch to hold mode
+   */
+  void SetHoldMode() const;
 
   /**
    * @brief arm the drone
@@ -107,6 +164,22 @@ class ControllerBase : public rclcpp::Node {
    * @brief disarm the drone
    */
   void Disarm() const;
+
+  /**
+   * @brief takeoff to fixed height
+   * @see MIS_TAKEOFF_ALT in PX4 params
+   */
+  void Takeoff();
+
+  /**
+   * @brief land in place
+   */
+  void Land();
+
+ private:
+  void SetpointCallback();
+
+  void DummyCallback();
 };
 
 } // namespace asl

@@ -18,7 +18,7 @@ class SimpleController : public ControllerBase {
  private:
   const rclcpp::TimerBase::SharedPtr publish_loop_timer_;
 
-  void SetpointPublishLoop() const;
+  void SetpointPublishLoop();
 };
 
 } // namespace asl
