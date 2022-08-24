@@ -17,6 +17,7 @@ using std::placeholders::_1;
 ControllerBase::ControllerBase(const std::string& node_name, const size_t qos_history_depth)
     : rclcpp::Node(node_name),
       setpoint_loop_timer_(nullptr),
+      ctrl_mode_loop_timer_(nullptr),
       sub_timesync_(create_subscription<Timesync>(
         "/fmu/timesync/out",
         qos_history_depth,
@@ -42,6 +43,10 @@ ControllerBase::ControllerBase(const std::string& node_name, const size_t qos_hi
         "/fmu/offboard_control_mode/in", qos_history_depth)),
       trajectory_pub_(create_publisher<TrajectorySetpoint>(
         "/fmu/trajectory_setpoint/in", qos_history_depth)),
+      attitude_pub_(create_publisher<VehicleAttitudeSetpoint>(
+        "/fmu/vehicle_attitude_setpoint/in", qos_history_depth)),
+      rates_pub_(create_publisher<VehicleRatesSetpoint>(
+        "/fmu/vehicle_rates_setpoint/in", qos_history_depth)),
       vehicle_cmd_pub_(create_publisher<VehicleCommand>(
         "/fmu/vehicle_command/in", qos_history_depth)) {
 
@@ -80,36 +85,68 @@ void ControllerBase::TimeSyncCallback(const Timesync::SharedPtr msg) const {
 }
 
 void ControllerBase::SetPosition(const Eigen::Vector3d& position, const double& yaw) {
-  ob_setpoint_.position[0] = position.x();
-  ob_setpoint_.position[1] = position.y();
-  ob_setpoint_.position[2] = position.z();
-  ob_setpoint_.yaw = yaw;
+  ob_traj_setpoint_.position[0] = position.x();
+  ob_traj_setpoint_.position[1] = position.y();
+  ob_traj_setpoint_.position[2] = position.z();
+  ob_traj_setpoint_.yaw = yaw;
 }
 
 void ControllerBase::SetVelocity(const Eigen::Vector3d& velocity, const double& yaw_rate) {
-  ob_setpoint_.velocity[0] = velocity.x();
-  ob_setpoint_.velocity[1] = velocity.y();
-  ob_setpoint_.velocity[2] = velocity.z();
-  ob_setpoint_.yawspeed = yaw_rate;
+  ob_traj_setpoint_.velocity[0] = velocity.x();
+  ob_traj_setpoint_.velocity[1] = velocity.y();
+  ob_traj_setpoint_.velocity[2] = velocity.z();
+  ob_traj_setpoint_.yawspeed = yaw_rate;
 }
 
 void ControllerBase::SetAltitude(const double& altitude) {
-  ob_setpoint_.position[2] = -altitude;
+  ob_traj_setpoint_.position[2] = -altitude;
+}
+
+void ControllerBase::SetAttitude(const Eigen::Quaterniond& attitude,
+                                 const double& thrust,
+                                 const double& yaw_rate) {
+  double safe_thrust = thrust;
+  if (thrust < 0 || thrust > 1) {
+    safe_thrust = 0.0;
+    RCLCPP_ERROR(this->get_logger(),
+      "provided thrust %d is not normalized to [0, 1], using 0 thrust", thrust);
+  }
+
+  ob_attitude_setpoint_.q_d[0] = attitude.w();
+  ob_attitude_setpoint_.q_d[1] = attitude.x();
+  ob_attitude_setpoint_.q_d[2] = attitude.y();
+  ob_attitude_setpoint_.q_d[3] = attitude.z();
+  ob_attitude_setpoint_.thrust_body[2] = -safe_thrust;
+  ob_attitude_setpoint_.yaw_sp_move_rate = yaw_rate;
+}
+
+void ControllerBase::SetBodyRate(const Eigen::Vector3d& rates, const double& thrust) {
+  double safe_thrust = thrust;
+  if (thrust < 0 || thrust > 1) {
+    safe_thrust = 0.0;
+    RCLCPP_ERROR(this->get_logger(),
+      "provided thrust %d is not normalized to [0, 1], using 0 thrust", thrust);
+  }
+
+  ob_rate_setpoint_.roll = rates.x();
+  ob_rate_setpoint_.pitch = rates.y();
+  ob_rate_setpoint_.yaw = rates.z();
+  ob_rate_setpoint_.thrust_body[2] = -safe_thrust;
 }
 
 void ControllerBase::SetTrajCtrlMode(const trajectory_ctrl_mode_e& mode) {
   switch (mode) {
   // position control
   case POSITION:
-    ob_setpoint_.velocity[0] = NAN;
-    ob_setpoint_.velocity[1] = NAN;
-    ob_setpoint_.velocity[2] = NAN;
-    ob_setpoint_.yawspeed = NAN;
+    ob_traj_setpoint_.velocity[0] = NAN;
+    ob_traj_setpoint_.velocity[1] = NAN;
+    ob_traj_setpoint_.velocity[2] = NAN;
+    ob_traj_setpoint_.yawspeed = NAN;
     __attribute__ ((fallthrough));
   case POSITION_VELOCITY:
-    ob_setpoint_.acceleration[0] = NAN;
-    ob_setpoint_.acceleration[1] = NAN;
-    ob_setpoint_.acceleration[2] = NAN;
+    ob_traj_setpoint_.acceleration[0] = NAN;
+    ob_traj_setpoint_.acceleration[1] = NAN;
+    ob_traj_setpoint_.acceleration[2] = NAN;
     __attribute__ ((fallthrough));
   case POSITION_VELOCITY_ACCELERATION:
     ob_ctrl_mode_.position = true;
@@ -117,17 +154,17 @@ void ControllerBase::SetTrajCtrlMode(const trajectory_ctrl_mode_e& mode) {
 
   // velocity control
   case VELOCITY:
-    ob_setpoint_.position[2] = NAN;
+    ob_traj_setpoint_.position[2] = NAN;
     __attribute__ ((fallthrough));
   case VELOCITY_ALTITUDE:
-    ob_setpoint_.acceleration[0] = NAN;
-    ob_setpoint_.acceleration[1] = NAN;
-    ob_setpoint_.acceleration[2] = NAN;
+    ob_traj_setpoint_.acceleration[0] = NAN;
+    ob_traj_setpoint_.acceleration[1] = NAN;
+    ob_traj_setpoint_.acceleration[2] = NAN;
     __attribute__ ((fallthrough));
   case VELOCITY_ALTITUDE_ACCELERATION:
-    ob_setpoint_.position[0] = NAN;
-    ob_setpoint_.position[1] = NAN;
-    ob_setpoint_.yaw = NAN;
+    ob_traj_setpoint_.position[0] = NAN;
+    ob_traj_setpoint_.position[1] = NAN;
+    ob_traj_setpoint_.yaw = NAN;
     ob_ctrl_mode_.position = false;
     ob_ctrl_mode_.velocity = true;
     break;
@@ -138,17 +175,50 @@ void ControllerBase::SetTrajCtrlMode(const trajectory_ctrl_mode_e& mode) {
     ob_ctrl_mode_.velocity = false;
     ob_ctrl_mode_.acceleration = true;
 
-    ob_setpoint_.position[0] = NAN;
-    ob_setpoint_.position[1] = NAN;
-    ob_setpoint_.position[2] = NAN;
-    ob_setpoint_.velocity[0] = NAN;
-    ob_setpoint_.velocity[1] = NAN;
-    ob_setpoint_.velocity[2] = NAN;
+    ob_traj_setpoint_.position[0] = NAN;
+    ob_traj_setpoint_.position[1] = NAN;
+    ob_traj_setpoint_.position[2] = NAN;
+    ob_traj_setpoint_.velocity[0] = NAN;
+    ob_traj_setpoint_.velocity[1] = NAN;
+    ob_traj_setpoint_.velocity[2] = NAN;
     break;
   }
 
   setpoint_loop_timer_ = this->create_wall_timer(
-    50ms, std::bind(&ControllerBase::SetpointCallback, this));
+    50ms, std::bind(&ControllerBase::TrajSetpointCallback, this));
+  ctrl_mode_loop_timer_ = this->create_wall_timer(
+    100ms, std::bind(&ControllerBase::OffboardControlModeCallback, this));
+}
+
+void ControllerBase::SetAttitudeCtrlMode() {
+  ob_ctrl_mode_.position = false;
+  ob_ctrl_mode_.velocity = false;
+  ob_ctrl_mode_.acceleration = false;
+  ob_ctrl_mode_.attitude = true;
+
+  ob_attitude_setpoint_.thrust_body[0] = 0.0f;
+  ob_attitude_setpoint_.thrust_body[1] = 0.0f;
+
+  setpoint_loop_timer_ = this->create_wall_timer(
+    20ms, std::bind(&ControllerBase::AttitudeSetpointCallback, this));
+  ctrl_mode_loop_timer_ = this->create_wall_timer(
+    100ms, std::bind(&ControllerBase::OffboardControlModeCallback, this));
+}
+
+void ControllerBase::SetBodyRateCtrlMode() {
+  ob_ctrl_mode_.position = false;
+  ob_ctrl_mode_.velocity = false;
+  ob_ctrl_mode_.acceleration = false;
+  ob_ctrl_mode_.attitude = false;
+  ob_ctrl_mode_.body_rate = true;
+
+  ob_rate_setpoint_.thrust_body[0] = 0.0f;
+  ob_rate_setpoint_.thrust_body[1] = 0.0f;
+
+  setpoint_loop_timer_ = this->create_wall_timer(
+    5ms, std::bind(&ControllerBase::RatesSetpointCallback, this));
+  ctrl_mode_loop_timer_ = this->create_wall_timer(
+    100ms, std::bind(&ControllerBase::OffboardControlModeCallback, this));
 }
 
 void ControllerBase::StopSetpointLoop() {
@@ -161,7 +231,8 @@ void ControllerBase::StopSetpointLoop() {
   ob_ctrl_mode_.body_rate = false;
   ob_ctrl_mode_.actuator = false;
 
-  setpoint_loop_timer_ = this->create_wall_timer(
+  setpoint_loop_timer_ = nullptr;
+  ctrl_mode_loop_timer_ = this->create_wall_timer(
     1s, std::bind(&ControllerBase::DummyCallback, this));
 }
 
@@ -260,13 +331,24 @@ void ControllerBase::Land() {
   RCLCPP_INFO(this->get_logger(), "Land initiated");
 }
 
-void ControllerBase::SetpointCallback() {
-  const uint64_t timestamp = rclcpp::Clock().now().nanoseconds() / 1000;
-  ob_ctrl_mode_.timestamp = timestamp;
-  offboard_mode_pub_->publish(ob_ctrl_mode_);
+void ControllerBase::TrajSetpointCallback() {
+  ob_traj_setpoint_.timestamp = rclcpp::Clock().now().nanoseconds() / 1000;
+  trajectory_pub_->publish(ob_traj_setpoint_);
+}
 
-  ob_setpoint_.timestamp = timestamp;
-  trajectory_pub_->publish(ob_setpoint_);
+void ControllerBase::AttitudeSetpointCallback() {
+  ob_attitude_setpoint_.timestamp = rclcpp::Clock().now().nanoseconds() / 1000;
+  attitude_pub_->publish(ob_attitude_setpoint_);
+}
+
+void ControllerBase::RatesSetpointCallback() {
+  ob_rate_setpoint_.timestamp = rclcpp::Clock().now().nanoseconds() / 1000;
+  rates_pub_->publish(ob_rate_setpoint_);
+}
+
+void ControllerBase::OffboardControlModeCallback() {
+  ob_ctrl_mode_.timestamp = rclcpp::Clock().now().nanoseconds() / 1000;
+  offboard_mode_pub_->publish(ob_ctrl_mode_);
 
   // lazily enable offboard control mode
   if (!vehicle_ctrl_mode_.flag_control_offboard_enabled) {

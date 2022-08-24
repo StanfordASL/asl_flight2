@@ -9,10 +9,12 @@
 #include <px4_msgs/msg/offboard_control_mode.hpp>
 #include <px4_msgs/msg/timesync.hpp>
 #include <px4_msgs/msg/trajectory_setpoint.hpp>
+#include <px4_msgs/msg/vehicle_attitude_setpoint.hpp>
 #include <px4_msgs/msg/vehicle_command.hpp>
-#include <px4_msgs/msg/vehicle_odometry.hpp>
-#include <px4_msgs/msg/vehicle_status.hpp>
 #include <px4_msgs/msg/vehicle_control_mode.hpp>
+#include <px4_msgs/msg/vehicle_odometry.hpp>
+#include <px4_msgs/msg/vehicle_rates_setpoint.hpp>
+#include <px4_msgs/msg/vehicle_status.hpp>
 
 
 namespace asl {
@@ -56,9 +58,17 @@ class ControllerBase : public rclcpp::Node {
   mutable px4_msgs::msg::VehicleControlMode vehicle_ctrl_mode_;
   mutable px4_msgs::msg::VehicleStatus vehicle_status_;
 
+  // control mode sent together with setpoint messages
   px4_msgs::msg::OffboardControlMode ob_ctrl_mode_;
-  px4_msgs::msg::TrajectorySetpoint ob_setpoint_;
+
+  // control setpoint messages
+  px4_msgs::msg::TrajectorySetpoint ob_traj_setpoint_;
+  px4_msgs::msg::VehicleAttitudeSetpoint ob_attitude_setpoint_;
+  px4_msgs::msg::VehicleRatesSetpoint ob_rate_setpoint_;
+
+  // timer for periodic sending setpoint message
   rclcpp::TimerBase::SharedPtr setpoint_loop_timer_;
+  rclcpp::TimerBase::SharedPtr ctrl_mode_loop_timer_;
 
   // PX4 message subscriptions
   const rclcpp::Subscription<px4_msgs::msg::Timesync>::SharedPtr sub_timesync_;
@@ -70,6 +80,8 @@ class ControllerBase : public rclcpp::Node {
   const rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr pose_pub_;
   const rclcpp::Publisher<px4_msgs::msg::OffboardControlMode>::SharedPtr offboard_mode_pub_;
   const rclcpp::Publisher<px4_msgs::msg::TrajectorySetpoint>::SharedPtr trajectory_pub_;
+  const rclcpp::Publisher<px4_msgs::msg::VehicleAttitudeSetpoint>::SharedPtr attitude_pub_;
+  const rclcpp::Publisher<px4_msgs::msg::VehicleRatesSetpoint>::SharedPtr rates_pub_;
   const rclcpp::Publisher<px4_msgs::msg::VehicleCommand>::SharedPtr vehicle_cmd_pub_;
 
   // control modes
@@ -124,11 +136,39 @@ class ControllerBase : public rclcpp::Node {
   void SetAltitude(const double& altitude);
 
   /**
+   * @brief setn target attitude to flight controller
+   *
+   * @param attitude  target orientation
+   * @param thrust    target thrust normalized to [0, 1]
+   * @param yaw_rate  yaw velocity in rad/s (NED -> clockwise is positive)
+   */
+  void SetAttitude(const Eigen::Quaterniond& attitude, const double& thrust,
+                   const double& yaw_rate = NAN);
+
+  /**
+   * @brief set body rate control
+   *
+   * @param rates   body frame angular rate in NED frame
+   * @param thrust  thrust normalized to [0, 1]
+   */
+  void SetBodyRate(const Eigen::Vector3d& rates, const double& thrust);
+
+  /**
    * @brief set trajectory setpoint control mode
    *
    * @param mode see trajectory_ctrl_mode_e
    */
   void SetTrajCtrlMode(const trajectory_ctrl_mode_e& mode);
+
+  /**
+   * @brief set attitude control mode
+   */
+  void SetAttitudeCtrlMode();
+
+  /**
+   * @brief set body rate control mode
+   */
+  void SetBodyRateCtrlMode();
 
   /**
    * @brief stop setpoint loop timer
@@ -177,7 +217,13 @@ class ControllerBase : public rclcpp::Node {
   void Land();
 
  private:
-  void SetpointCallback();
+  void TrajSetpointCallback();
+
+  void AttitudeSetpointCallback();
+
+  void RatesSetpointCallback();
+
+  void OffboardControlModeCallback();
 
   void DummyCallback();
 };
