@@ -29,24 +29,22 @@ target_include_directories(controller_lib PUBLIC
   $<INSTALL_INTERFACE:include>)
 ament_target_dependencies(controller_lib rclcpp px4_ros_com px4_msgs Eigen3 geometry_msgs tf2_eigen)
 
-# executables
-add_executable(takeoff_example src/takeoff_example.cpp)
-target_link_libraries(takeoff_example controller_lib)
+# examples
+add_executable(example_takeoff src/examples/takeoff.cpp)
+target_link_libraries(example_takeoff controller_lib)
 
-add_executable(test_command src/test_command.cpp)
-target_link_libraries(test_command controller_lib)
-
+# application nodes
 add_executable(rc_controller src/rc_controller.cpp)
 target_link_libraries(rc_controller controller_lib)
 
 # installation
 install(TARGETS
     controller_lib
-    takeoff_example
-    test_command
     rc_controller
+    example_takeoff
     DESTINATION lib/${PROJECT_NAME})
 
+# export dependencies for Eigen3
 ament_export_dependencies(eigen3_cmake_module)
 ament_export_dependencies(Eigen3)
 

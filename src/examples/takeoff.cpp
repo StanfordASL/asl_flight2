@@ -7,20 +7,16 @@ using namespace std::chrono_literals;
 class TakeoffController : public asl::ControllerBase {
  public:
   TakeoffController() : ControllerBase("takeoff_example") {
-    ctrl_timer_ = this->create_wall_timer(1ms, [this]() {
-      RCLCPP_INFO(this->get_logger(), "hi");
-      SetPosition({0., 0., -1.}, 0.);
-    });
-
     rclcpp::sleep_for(5s);
-    RCLCPP_WARN(this->get_logger(), "Waked Up");
 
-    this->SetOffboardMode();
     this->Arm();
-  }
+    rclcpp::sleep_for(1s);
 
- private:
-  rclcpp::TimerBase::SharedPtr ctrl_timer_;
+    this->Takeoff();
+    rclcpp::sleep_for(10s);
+
+    this->Land();
+  }
 };
 
 int main(int argc, char* argv[]) {
