@@ -1,4 +1,4 @@
-#include "asl_flight2/controller_base.h"
+#include "asl_flight2/controller_base.hpp"
 
 #include <chrono>
 
@@ -24,7 +24,7 @@ enum ps4_btn_e {
   R1,
 };
 
-const std::string mode = "body_rate";
+const std::string mode = "velocity";
 
 class PS4Controller : public asl::ControllerBase {
  public:
