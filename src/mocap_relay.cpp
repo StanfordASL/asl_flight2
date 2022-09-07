@@ -31,18 +31,19 @@ void MocapRelay::PublishPose(const geometry_msgs::msg::PoseStamped& msg) {
   VehicleVisualOdometry odom{};
   odom.timestamp = this->get_clock()->now().nanoseconds() / 1e3;
   odom.timestamp_sample = timestamp_sample.nanoseconds() / 1e3;
-  odom.local_frame = VehicleVisualOdometry::LOCAL_FRAME_NED;
+  odom.pose_frame = VehicleVisualOdometry::POSE_FRAME_NED;
 
-  odom.x = pose_world.pose.position.x;
-  odom.y = pose_world.pose.position.y;
-  odom.z = pose_world.pose.position.z;
+  odom.position[0] = pose_world.pose.position.x;
+  odom.position[1] = pose_world.pose.position.y;
+  odom.position[2] = pose_world.pose.position.z;
   odom.q[0] = pose_world.pose.orientation.w;
   odom.q[1] = pose_world.pose.orientation.x;
   odom.q[2] = pose_world.pose.orientation.y;
   odom.q[3] = pose_world.pose.orientation.z;
 
-  odom.pose_covariance[VehicleVisualOdometry::COVARIANCE_MATRIX_X_VARIANCE] = NAN;
-  odom.pose_covariance[VehicleVisualOdometry::COVARIANCE_MATRIX_ROLL_VARIANCE] = NAN;
+  odom.position_variance[0] = NAN;
+  odom.position_variance[1] = NAN;
+  odom.position_variance[2] = NAN;
 
   odom_pub_->publish(odom);
 }

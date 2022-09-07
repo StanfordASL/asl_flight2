@@ -75,8 +75,7 @@ class MocapRelaySim : public asl::MocapRelay {
 };
 
 
-int main(int argc, char* argv[])
-{
+int main(int argc, char* argv[]) {
   rclcpp::init(argc, argv);
   gazebo::client::setup(argc, argv);
 

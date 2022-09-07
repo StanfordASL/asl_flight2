@@ -58,6 +58,11 @@ install(TARGETS
     example_takeoff
     DESTINATION lib/${PROJECT_NAME})
 
+install(DIRECTORY
+    launch
+    rviz
+    DESTINATION share/${PROJECT_NAME})
+
 # export dependencies for Eigen3
 ament_export_dependencies(eigen3_cmake_module)
 ament_export_dependencies(Eigen3)

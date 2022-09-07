@@ -38,7 +38,7 @@ ControllerBase::ControllerBase(const std::string& node_name, const size_t qos_hi
         qos_history_depth,
         [this](const VehicleStatus::SharedPtr msg) { vehicle_status_ = *msg; }
       )),
-      pose_pub_(create_publisher<PoseStamped>("pose", qos_history_depth)),
+      pose_pub_(create_publisher<PoseWithCovarianceStamped>("pose", qos_history_depth)),
       offboard_mode_pub_(create_publisher<OffboardControlMode>(
         "/fmu/offboard_control_mode/in", qos_history_depth)),
       trajectory_pub_(create_publisher<TrajectorySetpoint>(
@@ -60,24 +60,29 @@ ControllerBase::ControllerBase(const std::string& node_name, const size_t qos_hi
 
 void ControllerBase::VehicleOdometryCallback(const VehicleOdometry::SharedPtr msg) const {
   // position
-  world_t_body_ = {msg->x, msg->y, msg->z};
+  world_t_body_ = {msg->position[0], msg->position[1], msg->position[2]};
 
   // orientation
   world_R_body_ = px4_ros_com::frame_transforms::utils::quaternion::array_to_eigen_quat(msg->q);
 
   // velocity
-  v_body_ = {msg->vx, msg->vy, msg->vz};
+  v_body_ = {msg->velocity[0], msg->velocity[1], msg->velocity[2]};
 
   // anguler velocity
-  w_body_ = {msg->rollspeed, msg->pitchspeed, msg->yawspeed};
+  w_body_ = {msg->angular_velocity[0], msg->angular_velocity[1], msg->angular_velocity[1]};
 
   // re-publish pose for rviz visualization
-  PoseStamped pose_msg{};
-  pose_msg.header.frame_id = "world_ned";
-  pose_msg.header.stamp = rclcpp::Clock().now();
-  pose_msg.pose.position = tf2::toMsg(world_t_body_);
-  pose_msg.pose.orientation = tf2::toMsg(world_R_body_);
-  pose_pub_->publish(pose_msg);
+  PoseWithCovarianceStamped viz_msg{};
+  viz_msg.header.frame_id = "world_ned";
+  viz_msg.header.stamp = rclcpp::Clock().now();
+
+  viz_msg.pose.pose.position = tf2::toMsg(world_t_body_);
+  viz_msg.pose.pose.orientation = tf2::toMsg(world_R_body_);
+  for (int i = 0; i < 3; ++i) {
+    viz_msg.pose.covariance[i * 6 + i] = msg->position_variance[i];
+    viz_msg.pose.covariance[(i + 3) * 6 + i + 3] = msg->orientation_variance[i];
+  }
+  pose_pub_->publish(viz_msg);
 }
 
 void ControllerBase::TimeSyncCallback(const Timesync::SharedPtr msg) const {
@@ -200,7 +205,7 @@ void ControllerBase::SetAttitudeCtrlMode() {
   ob_attitude_setpoint_.thrust_body[1] = 0.0f;
 
   setpoint_loop_timer_ = this->create_wall_timer(
-    20ms, std::bind(&ControllerBase::AttitudeSetpointCallback, this));
+    10ms, std::bind(&ControllerBase::AttitudeSetpointCallback, this));
   ctrl_mode_loop_timer_ = this->create_wall_timer(
     100ms, std::bind(&ControllerBase::OffboardControlModeCallback, this));
 }
@@ -216,7 +221,7 @@ void ControllerBase::SetBodyRateCtrlMode() {
   ob_rate_setpoint_.thrust_body[1] = 0.0f;
 
   setpoint_loop_timer_ = this->create_wall_timer(
-    5ms, std::bind(&ControllerBase::RatesSetpointCallback, this));
+    10ms, std::bind(&ControllerBase::RatesSetpointCallback, this));
   ctrl_mode_loop_timer_ = this->create_wall_timer(
     100ms, std::bind(&ControllerBase::OffboardControlModeCallback, this));
 }

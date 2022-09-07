@@ -24,7 +24,7 @@ enum ps4_btn_e {
   R1,
 };
 
-const std::string mode = "velocity";
+const std::string mode = "body_rate";
 
 class PS4Controller : public asl::ControllerBase {
  public:
