@@ -29,7 +29,7 @@ void MocapRelay::PublishPose(const geometry_msgs::msg::PoseStamped& msg) {
   rclcpp::Time timestamp_sample = msg.header.stamp;
 
   VehicleVisualOdometry odom{};
-  odom.timestamp = this->get_clock()->now().nanoseconds() / 1e3;
+  odom.timestamp = this->now().nanoseconds() / 1e3;
   odom.timestamp_sample = timestamp_sample.nanoseconds() / 1e3;
   odom.pose_frame = VehicleVisualOdometry::POSE_FRAME_NED;
 

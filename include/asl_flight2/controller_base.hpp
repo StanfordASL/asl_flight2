@@ -176,6 +176,13 @@ class ControllerBase : public rclcpp::Node {
   void StopSetpointLoop();
 
   /**
+   * @brief fill out basic structure of a vehicle_command message
+   *
+   * @param msg pointer to a VehicleCommand message to fill
+   */
+  void SetDefaultVehicleCommand(px4_msgs::msg::VehicleCommand* msg) const;
+
+  /**
    * @brief set flight mode
    *
    * @param main_mode

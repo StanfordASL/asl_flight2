@@ -6,6 +6,7 @@ Panels:
       Expanded:
         - /Global Options1
         - /Status1
+        - /Grid1
         - /PoseWithCovariance1
         - /PoseWithCovariance1/Covariance1
         - /PoseWithCovariance1/Covariance1/Position1
@@ -123,25 +124,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 7.44150972366333
+      Distance: 10.736162185668945
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -0.37720751762390137
-        Y: -0.9681914448738098
-        Z: -1.248410701751709
+        X: 0.6615709662437439
+        Y: 0.8221622705459595
+        Z: 0.33059555292129517
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.7803974747657776
+      Pitch: 0.5147967338562012
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 3.715404987335205
+      Yaw: 3.380406618118286
     Saved: ~
 Window Geometry:
   Displays:

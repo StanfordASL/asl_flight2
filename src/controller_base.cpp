@@ -74,7 +74,7 @@ void ControllerBase::VehicleOdometryCallback(const VehicleOdometry::SharedPtr ms
   // re-publish pose for rviz visualization
   PoseWithCovarianceStamped viz_msg{};
   viz_msg.header.frame_id = "world_ned";
-  viz_msg.header.stamp = rclcpp::Clock().now();
+  viz_msg.header.stamp = rclcpp::Time(msg->timestamp_sample * 1e3);
 
   viz_msg.pose.pose.position = tf2::toMsg(world_t_body_);
   viz_msg.pose.pose.orientation = tf2::toMsg(world_R_body_);
@@ -241,16 +241,13 @@ void ControllerBase::StopSetpointLoop() {
     1s, std::bind(&ControllerBase::DummyCallback, this));
 }
 
-inline VehicleCommand DefaultVehicleCommand() {
-  VehicleCommand msg{};
-  msg.timestamp = rclcpp::Clock().now().nanoseconds() / 1000;
-  msg.target_system = 1;
-  msg.target_component = 1;
-  msg.source_system = 1;
-  msg.source_component = 1;
-  msg.from_external = true;
-
-  return msg;
+void ControllerBase::SetDefaultVehicleCommand(VehicleCommand* msg) const {
+  msg->timestamp = this->now().nanoseconds() / 1000;
+  msg->target_system = 1;
+  msg->target_component = 1;
+  msg->source_system = 1;
+  msg->source_component = 1;
+  msg->from_external = true;
 }
 
 // @see https://github.com/PX4/PX4-Autopilot/blob/main/src/modules/commander/px4_custom_mode.h
@@ -258,7 +255,8 @@ inline VehicleCommand DefaultVehicleCommand() {
 void ControllerBase::SetFlightMode(float main_mode_offboard, float sub_mode) const {
   constexpr float base_mode_custom = 1;
 
-  VehicleCommand msg = DefaultVehicleCommand();
+  VehicleCommand msg{};
+  this->SetDefaultVehicleCommand(&msg);
   msg.command = VehicleCommand::VEHICLE_CMD_DO_SET_MODE;
   msg.param1 = base_mode_custom;
   msg.param2 = main_mode_offboard;
@@ -283,7 +281,8 @@ void ControllerBase::SetHoldMode() const {
 }
 
 void ControllerBase::Arm() const {
-  VehicleCommand msg = DefaultVehicleCommand();
+  VehicleCommand msg{};
+  this->SetDefaultVehicleCommand(&msg);
   msg.command = VehicleCommand::VEHICLE_CMD_COMPONENT_ARM_DISARM;
   msg.param1 = VehicleCommand::ARMING_ACTION_ARM;
 
@@ -293,7 +292,8 @@ void ControllerBase::Arm() const {
 }
 
 void ControllerBase::Disarm() const {
-  VehicleCommand msg = DefaultVehicleCommand();
+  VehicleCommand msg{};
+  this->SetDefaultVehicleCommand(&msg);
   msg.command = VehicleCommand::VEHICLE_CMD_COMPONENT_ARM_DISARM;
   msg.param1 = VehicleCommand::ARMING_ACTION_DISARM;
 
@@ -303,7 +303,8 @@ void ControllerBase::Disarm() const {
 }
 
 void ControllerBase::Takeoff() {
-  VehicleCommand msg = DefaultVehicleCommand();
+  VehicleCommand msg{};
+  this->SetDefaultVehicleCommand(&msg);
   msg.command = VehicleCommand::VEHICLE_CMD_NAV_TAKEOFF;
   msg.param1 = NAN;
   msg.param2 = NAN;
@@ -321,7 +322,8 @@ void ControllerBase::Takeoff() {
 void ControllerBase::Land() {
   StopSetpointLoop(); // stop setpoint loop
 
-  VehicleCommand msg = DefaultVehicleCommand();
+  VehicleCommand msg{};
+  this->SetDefaultVehicleCommand(&msg);
   msg.command = VehicleCommand::VEHICLE_CMD_NAV_LAND;
   msg.param1 = NAN;
   msg.param2 = NAN;
@@ -337,22 +339,22 @@ void ControllerBase::Land() {
 }
 
 void ControllerBase::TrajSetpointCallback() {
-  ob_traj_setpoint_.timestamp = rclcpp::Clock().now().nanoseconds() / 1000;
+  ob_traj_setpoint_.timestamp = this->now().nanoseconds() / 1000;
   trajectory_pub_->publish(ob_traj_setpoint_);
 }
 
 void ControllerBase::AttitudeSetpointCallback() {
-  ob_attitude_setpoint_.timestamp = rclcpp::Clock().now().nanoseconds() / 1000;
+  ob_attitude_setpoint_.timestamp = this->now().nanoseconds() / 1000;
   attitude_pub_->publish(ob_attitude_setpoint_);
 }
 
 void ControllerBase::RatesSetpointCallback() {
-  ob_rate_setpoint_.timestamp = rclcpp::Clock().now().nanoseconds() / 1000;
+  ob_rate_setpoint_.timestamp = this->now().nanoseconds() / 1000;
   rates_pub_->publish(ob_rate_setpoint_);
 }
 
 void ControllerBase::OffboardControlModeCallback() {
-  ob_ctrl_mode_.timestamp = rclcpp::Clock().now().nanoseconds() / 1000;
+  ob_ctrl_mode_.timestamp = this->now().nanoseconds() / 1000;
   offboard_mode_pub_->publish(ob_ctrl_mode_);
 
   // lazily enable offboard control mode

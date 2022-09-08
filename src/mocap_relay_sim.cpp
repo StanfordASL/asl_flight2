@@ -45,7 +45,7 @@ class MocapRelaySim : public asl::MocapRelay {
 
   void PoseCallback(ConstPosesStampedPtr& msg) {
     // use ROS2 time
-    const auto now = this->get_clock()->now();
+    const rclcpp::Time now = this->now();
 
     for (int i = 0; i < msg->pose_size(); ++i) {
       const auto pose_tmp = msg->pose(i);
@@ -65,7 +65,7 @@ class MocapRelaySim : public asl::MocapRelay {
         geometry_msgs::msg::PoseStamped pose_stamped{};
         tf2::toMsg(world_nwu_T_body_neu, pose_stamped.pose);
 
-        pose_stamped.header.stamp = this->get_clock()->now();
+        pose_stamped.header.stamp = now;
         pose_stamped.header.frame_id = "world_nwu";
 
         this->PublishPose(pose_stamped);
