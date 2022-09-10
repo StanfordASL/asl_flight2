@@ -205,7 +205,7 @@ void ControllerBase::SetAttitudeCtrlMode() {
   ob_attitude_setpoint_.thrust_body[1] = 0.0f;
 
   setpoint_loop_timer_ = this->create_wall_timer(
-    10ms, std::bind(&ControllerBase::AttitudeSetpointCallback, this));
+    20ms, std::bind(&ControllerBase::AttitudeSetpointCallback, this));
   ctrl_mode_loop_timer_ = this->create_wall_timer(
     100ms, std::bind(&ControllerBase::OffboardControlModeCallback, this));
 }

@@ -26,7 +26,7 @@ if(BUILD_TESTING)
 endif()
 
 # libraries
-add_library(autonomy_lib src/controller_base.cpp src/mocap_relay.cpp)
+add_library(autonomy_lib src/control/controller_base.cpp src/mocap/mocap_relay.cpp)
 target_include_directories(autonomy_lib PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>)
@@ -38,23 +38,22 @@ add_executable(example_takeoff src/examples/takeoff.cpp)
 target_link_libraries(example_takeoff autonomy_lib)
 
 # PS4 RC Control
-add_executable(rc_controller src/rc_controller.cpp)
-target_link_libraries(rc_controller autonomy_lib)
+add_executable(controller_ps4 src/control/controller_ps4.cpp)
+target_link_libraries(controller_ps4 autonomy_lib)
 
 # Simulation grountruth publisher
 find_package(gazebo)
 if(gazebo_FOUND)
-    add_executable(mocap_relay_sim src/mocap_relay_sim.cpp)
+    add_executable(mocap_relay_sim src/mocap/mocap_relay_sim.cpp)
     target_link_libraries(mocap_relay_sim ${GAZEBO_LIBRARIES} autonomy_lib)
     target_include_directories(mocap_relay_sim PUBLIC ${GAZEBO_INCLUDE_DIRS})
-    #ament_target_dependencies(mocap_relay_sim rclcpp geometry_msgs px4_msgs)
     install(TARGETS mocap_relay_sim DESTINATION lib/${PROJECT_NAME})
 endif()
 
 # installation
 install(TARGETS
     autonomy_lib
-    rc_controller
+    controller_ps4
     example_takeoff
     DESTINATION lib/${PROJECT_NAME})
 
