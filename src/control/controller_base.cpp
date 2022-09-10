@@ -18,11 +18,6 @@ ControllerBase::ControllerBase(const std::string& node_name, const size_t qos_hi
     : rclcpp::Node(node_name),
       setpoint_loop_timer_(nullptr),
       ctrl_mode_loop_timer_(nullptr),
-      sub_timesync_(create_subscription<Timesync>(
-        "/fmu/timesync/out",
-        qos_history_depth,
-        std::bind(&ControllerBase::TimeSyncCallback, this, _1)
-      )),
       sub_ctrl_mode_(create_subscription<VehicleControlMode>(
         "/fmu/vehicle_control_mode/out",
         qos_history_depth,
@@ -58,35 +53,35 @@ ControllerBase::ControllerBase(const std::string& node_name, const size_t qos_hi
   ob_ctrl_mode_.actuator = false;
 }
 
-void ControllerBase::VehicleOdometryCallback(const VehicleOdometry::SharedPtr msg) const {
+void ControllerBase::VehicleOdometryCallback(const VehicleOdometry::SharedPtr msg) {
+  vehicle_state_.timetsamp = rclcpp::Time(msg->timestamp_sample * 1e3);
+
   // position
-  world_t_body_ = {msg->position[0], msg->position[1], msg->position[2]};
+  vehicle_state_.world_T_body.t = {msg->position[0], msg->position[1], msg->position[2]};
 
   // orientation
-  world_R_body_ = px4_ros_com::frame_transforms::utils::quaternion::array_to_eigen_quat(msg->q);
+  vehicle_state_.world_T_body.R =
+    px4_ros_com::frame_transforms::utils::quaternion::array_to_eigen_quat(msg->q);
 
   // velocity
-  v_body_ = {msg->velocity[0], msg->velocity[1], msg->velocity[2]};
+  vehicle_state_.twist_body.v = {msg->velocity[0], msg->velocity[1], msg->velocity[2]};
 
   // anguler velocity
-  w_body_ = {msg->angular_velocity[0], msg->angular_velocity[1], msg->angular_velocity[1]};
+  vehicle_state_.twist_body.w =
+    {msg->angular_velocity[0], msg->angular_velocity[1], msg->angular_velocity[1]};
 
   // re-publish pose for rviz visualization
   PoseWithCovarianceStamped viz_msg{};
   viz_msg.header.frame_id = "world_ned";
-  viz_msg.header.stamp = rclcpp::Time(msg->timestamp_sample * 1e3);
+  viz_msg.header.stamp = vehicle_state_.timetsamp;
 
-  viz_msg.pose.pose.position = tf2::toMsg(world_t_body_);
-  viz_msg.pose.pose.orientation = tf2::toMsg(world_R_body_);
+  viz_msg.pose.pose.position = tf2::toMsg(vehicle_state_.world_T_body.t);
+  viz_msg.pose.pose.orientation = tf2::toMsg(vehicle_state_.world_T_body.R);
   for (int i = 0; i < 3; ++i) {
     viz_msg.pose.covariance[i * 6 + i] = msg->position_variance[i];
     viz_msg.pose.covariance[(i + 3) * 6 + i + 3] = msg->orientation_variance[i];
   }
   pose_pub_->publish(viz_msg);
-}
-
-void ControllerBase::TimeSyncCallback(const Timesync::SharedPtr msg) const {
-  timestamp_synced_ = msg->timestamp;
 }
 
 void ControllerBase::SetPosition(const Eigen::Vector3d& position, const double& yaw) {
@@ -139,7 +134,12 @@ void ControllerBase::SetBodyRate(const Eigen::Vector3d& rates, const double& thr
   ob_rate_setpoint_.thrust_body[2] = -safe_thrust;
 }
 
-void ControllerBase::SetTrajCtrlMode(const trajectory_ctrl_mode_e& mode) {
+void ControllerBase::SetTrajCtrlMode(const TrajectoryControlMode& mode) {
+  if (ob_ctrl_mode_.position) {
+    RCLCPP_WARN(this->get_logger(), "SetTrajCtrlMode ignore: already eanbled");
+    return ;
+  }
+
   switch (mode) {
   // position control
   case POSITION:
@@ -193,9 +193,19 @@ void ControllerBase::SetTrajCtrlMode(const trajectory_ctrl_mode_e& mode) {
     50ms, std::bind(&ControllerBase::TrajSetpointCallback, this));
   ctrl_mode_loop_timer_ = this->create_wall_timer(
     100ms, std::bind(&ControllerBase::OffboardControlModeCallback, this));
+
+  RCLCPP_INFO(this->get_logger(), "Trajectory control mode enabled");
 }
 
 void ControllerBase::SetAttitudeCtrlMode() {
+  if (!ob_ctrl_mode_.position &&
+      !ob_ctrl_mode_.velocity &&
+      !ob_ctrl_mode_.acceleration &&
+      ob_ctrl_mode_.attitude) {
+    RCLCPP_WARN(this->get_logger(), "SetAttitudeCtrlMode ignore: already eanbled");
+    return ;
+  }
+
   ob_ctrl_mode_.position = false;
   ob_ctrl_mode_.velocity = false;
   ob_ctrl_mode_.acceleration = false;
@@ -208,9 +218,20 @@ void ControllerBase::SetAttitudeCtrlMode() {
     20ms, std::bind(&ControllerBase::AttitudeSetpointCallback, this));
   ctrl_mode_loop_timer_ = this->create_wall_timer(
     100ms, std::bind(&ControllerBase::OffboardControlModeCallback, this));
+
+  RCLCPP_INFO(this->get_logger(), "Attitude control mode enabled");
 }
 
 void ControllerBase::SetBodyRateCtrlMode() {
+  if (!ob_ctrl_mode_.position &&
+      !ob_ctrl_mode_.velocity &&
+      !ob_ctrl_mode_.acceleration &&
+      !ob_ctrl_mode_.attitude &&
+      ob_ctrl_mode_.body_rate) {
+    RCLCPP_WARN(this->get_logger(), "SetBodyRateCtrlMode ignore: already eanbled");
+    return ;
+  }
+
   ob_ctrl_mode_.position = false;
   ob_ctrl_mode_.velocity = false;
   ob_ctrl_mode_.acceleration = false;
@@ -224,9 +245,16 @@ void ControllerBase::SetBodyRateCtrlMode() {
     10ms, std::bind(&ControllerBase::RatesSetpointCallback, this));
   ctrl_mode_loop_timer_ = this->create_wall_timer(
     100ms, std::bind(&ControllerBase::OffboardControlModeCallback, this));
+
+  RCLCPP_INFO(this->get_logger(), "Body rate control mode enabled");
 }
 
 void ControllerBase::StopSetpointLoop() {
+  if (setpoint_loop_timer_ == nullptr) {
+    RCLCPP_WARN(this->get_logger(), "No active setpoint loop");
+    return ;
+  }
+
   SetHoldMode();
 
   ob_ctrl_mode_.position = false;
@@ -281,6 +309,11 @@ void ControllerBase::SetHoldMode() const {
 }
 
 void ControllerBase::Arm() const {
+  if (Armed()) {
+    RCLCPP_WARN(this->get_logger(), "Arm ignored: vehicle already armed");
+    return ;
+  }
+
   VehicleCommand msg{};
   this->SetDefaultVehicleCommand(&msg);
   msg.command = VehicleCommand::VEHICLE_CMD_COMPONENT_ARM_DISARM;
@@ -292,6 +325,14 @@ void ControllerBase::Arm() const {
 }
 
 void ControllerBase::Disarm() const {
+  if (IsAirborne()) {
+    RCLCPP_WARN(this->get_logger(), "Disarm ignored: vehicle in air");
+    return ;
+  } else if (!Armed()) {
+    RCLCPP_WARN(this->get_logger(), "Disarm ignored: vehicle not armed");
+    return ;
+  }
+
   VehicleCommand msg{};
   this->SetDefaultVehicleCommand(&msg);
   msg.command = VehicleCommand::VEHICLE_CMD_COMPONENT_ARM_DISARM;
@@ -303,6 +344,17 @@ void ControllerBase::Disarm() const {
 }
 
 void ControllerBase::Takeoff() {
+  if (!Armed()) {
+    RCLCPP_WARN(this->get_logger(), "Takeoff ignored: vehicle not armed");
+    return ;
+  } else if (IsAirborne()) {
+    RCLCPP_WARN(this->get_logger(), "Takeoff ignored: vehicle already in air");
+    return ;
+  } else if (TakeoffInProgress()) {
+    RCLCPP_WARN(this->get_logger(), "Takeoff ignored: takeoff in progress");
+    return ;
+  }
+
   VehicleCommand msg{};
   this->SetDefaultVehicleCommand(&msg);
   msg.command = VehicleCommand::VEHICLE_CMD_NAV_TAKEOFF;
@@ -320,6 +372,17 @@ void ControllerBase::Takeoff() {
 }
 
 void ControllerBase::Land() {
+  if (!Armed()) {
+    RCLCPP_WARN(this->get_logger(), "Land ignored: vehicle not armed");
+    return ;
+  } else if (!IsAirborne()) {
+    RCLCPP_WARN(this->get_logger(), "Land ignored: vehicle already on the ground");
+    return ;
+  } else if (LandingInProgress()) {
+    RCLCPP_WARN(this->get_logger(), "Land ignored: landing in progress");
+    return ;
+  }
+
   StopSetpointLoop(); // stop setpoint loop
 
   VehicleCommand msg{};
@@ -336,6 +399,22 @@ void ControllerBase::Land() {
   vehicle_cmd_pub_->publish(msg);
 
   RCLCPP_INFO(this->get_logger(), "Land initiated");
+}
+
+bool ControllerBase::Armed() const {
+  return vehicle_status_.arming_state == VehicleStatus::ARMING_STATE_ARMED;
+}
+
+bool ControllerBase::TakeoffInProgress() const {
+  return vehicle_status_.nav_state == VehicleStatus::NAVIGATION_STATE_AUTO_TAKEOFF;
+}
+
+bool ControllerBase::LandingInProgress() const {
+  return vehicle_status_.nav_state == VehicleStatus::NAVIGATION_STATE_AUTO_LAND;
+}
+
+bool ControllerBase::IsAirborne() const {
+  return vehicle_status_.takeoff_time != 0;
 }
 
 void ControllerBase::TrajSetpointCallback() {

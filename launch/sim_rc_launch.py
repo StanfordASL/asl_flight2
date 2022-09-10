@@ -37,7 +37,7 @@ def generate_launch_description():
         Node(
             package="asl_flight2",
             namespace="asl",
-            executable="rc_controller",
+            executable="controller_ps4",
             output="screen",
         ),
     ])

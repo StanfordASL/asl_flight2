@@ -38,25 +38,31 @@ class ControllerBase : public rclcpp::Node {
 
  protected:
   // working in PX4 default frame NED -- North-East-Down
+  struct VehicleState {
+    // timestamp
+    rclcpp::Time timetsamp;
 
-  // position
-  mutable Eigen::Vector3d world_t_body_;
+    // pose
+    struct Pose {
+      // position
+      Eigen::Vector3d t;
+      // orientation
+      Eigen::Quaterniond R;
+    } world_T_body;
 
-  // orientation
-  mutable Eigen::Quaterniond world_R_body_;
+    // velocity
+    struct Twist {
+      // linear velocity
+      Eigen::Vector3d v;
+      // angular velocity
+      Eigen::Vector3d w;
+    } twist_body;
 
-  // linear velocity
-  mutable Eigen::Vector3d v_body_;
-
-  // angular velocity
-  mutable Eigen::Vector3d w_body_;
-
-  // Synced Timestamp
-  mutable uint64_t timestamp_synced_;
+  } vehicle_state_;
 
   // vehicle states
-  mutable px4_msgs::msg::VehicleControlMode vehicle_ctrl_mode_;
-  mutable px4_msgs::msg::VehicleStatus vehicle_status_;
+  px4_msgs::msg::VehicleControlMode vehicle_ctrl_mode_;
+  px4_msgs::msg::VehicleStatus vehicle_status_;
 
   // control mode sent together with setpoint messages
   px4_msgs::msg::OffboardControlMode ob_ctrl_mode_;
@@ -85,7 +91,7 @@ class ControllerBase : public rclcpp::Node {
   const rclcpp::Publisher<px4_msgs::msg::VehicleCommand>::SharedPtr vehicle_cmd_pub_;
 
   // control modes
-  enum trajectory_ctrl_mode_e {
+  enum TrajectoryControlMode {
     POSITION,
     POSITION_VELOCITY,
     POSITION_VELOCITY_ACCELERATION,
@@ -102,15 +108,7 @@ class ControllerBase : public rclcpp::Node {
    *
    * @param msg message containing odometry data
    */
-  void VehicleOdometryCallback(const px4_msgs::msg::VehicleOdometry::SharedPtr msg) const;
-
-  /**
-  * @brief callback for getting synchronized (10Hz) timestamp
-  * @TODO(alvin): this does not seem necessary
-  *
-  * @param[in]  msg   The message
-  */
-  void TimeSyncCallback(const px4_msgs::msg::Timesync::SharedPtr msg) const;
+  void VehicleOdometryCallback(const px4_msgs::msg::VehicleOdometry::SharedPtr msg);
 
   /**
    * @brief send target position to flight controller
@@ -156,9 +154,9 @@ class ControllerBase : public rclcpp::Node {
   /**
    * @brief set trajectory setpoint control mode
    *
-   * @param mode see trajectory_ctrl_mode_e
+   * @param mode see TrajectoryControlMode
    */
-  void SetTrajCtrlMode(const trajectory_ctrl_mode_e& mode);
+  void SetTrajCtrlMode(const TrajectoryControlMode& mode);
 
   /**
    * @brief set attitude control mode
@@ -222,6 +220,34 @@ class ControllerBase : public rclcpp::Node {
    * @brief land in place
    */
   void Land();
+
+  /**
+   * @brief check vehicle arm status
+   *
+   * @return true if armed, false otherwise
+   */
+  bool Armed() const;
+
+  /**
+   * @brief check if vehicle is in the process of taking off
+   *
+   * @return whether or not takeoff is in progress
+   */
+  bool TakeoffInProgress() const;
+
+  /**
+   * @brief check if vehicle is in the process of landing
+   *
+   * @return whether or not landing is in progress
+   */
+  bool LandingInProgress() const;
+
+  /**
+   * @brief check if vehicle is flying
+   *
+   * @return true if vehicle is flying, false otherwise
+   */
+  bool IsAirborne() const;
 
  private:
   void TrajSetpointCallback();
