@@ -280,7 +280,7 @@ void ControllerBase::SetDefaultVehicleCommand(VehicleCommand* msg) const {
 
 // @see https://github.com/PX4/PX4-Autopilot/blob/main/src/modules/commander/px4_custom_mode.h
 // for the custom modes used below
-void ControllerBase::SetFlightMode(float main_mode_offboard, float sub_mode) const {
+void ControllerBase::SetFlightMode(float main_mode_offboard, float sub_mode) {
   constexpr float base_mode_custom = 1;
 
   VehicleCommand msg{};
@@ -293,14 +293,14 @@ void ControllerBase::SetFlightMode(float main_mode_offboard, float sub_mode) con
   vehicle_cmd_pub_->publish(msg);
 }
 
-void ControllerBase::SetOffboardMode() const {
+void ControllerBase::SetOffboardMode() {
   constexpr float main_mode_offboard = 6;
   SetFlightMode(main_mode_offboard);
 
   RCLCPP_INFO(this->get_logger(), "Mode switch: offboard control");
 }
 
-void ControllerBase::SetHoldMode() const {
+void ControllerBase::SetHoldMode() {
   constexpr float main_mode_auto = 4;
   constexpr float sub_mode_loiter = 3;
   SetFlightMode(main_mode_auto, sub_mode_loiter);
@@ -308,7 +308,7 @@ void ControllerBase::SetHoldMode() const {
   RCLCPP_INFO(this->get_logger(), "Mode switch: hold");
 }
 
-void ControllerBase::Arm() const {
+void ControllerBase::Arm() {
   if (Armed()) {
     RCLCPP_WARN(this->get_logger(), "Arm ignored: vehicle already armed");
     return ;
@@ -324,7 +324,7 @@ void ControllerBase::Arm() const {
   RCLCPP_INFO(this->get_logger(), "Armed");
 }
 
-void ControllerBase::Disarm() const {
+void ControllerBase::Disarm() {
   if (IsAirborne()) {
     RCLCPP_WARN(this->get_logger(), "Disarm ignored: vehicle in air");
     return ;

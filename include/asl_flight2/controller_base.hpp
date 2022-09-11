@@ -101,15 +101,6 @@ class ControllerBase : public rclcpp::Node {
     ACCELERATION,
   };
 
-  // Callbacks
-
-  /**
-   * @brief callback handler for reading state from the flight controller
-   *
-   * @param msg message containing odometry data
-   */
-  void VehicleOdometryCallback(const px4_msgs::msg::VehicleOdometry::SharedPtr msg);
-
   /**
    * @brief send target position to flight controller
    *
@@ -188,27 +179,27 @@ class ControllerBase : public rclcpp::Node {
    *
    * @see px4_custom_mode.h for mode definitions
    */
-  void SetFlightMode(float main_mode, float sub_mode = NAN) const;
+  void SetFlightMode(float main_mode, float sub_mode = NAN);
 
   /**
    * @brief switch to offboard control mode
    */
-  void SetOffboardMode() const;
+  void SetOffboardMode();
 
   /**
    * @brief switch to hold mode
    */
-  void SetHoldMode() const;
+  void SetHoldMode();
 
   /**
    * @brief arm the drone
    */
-  void Arm() const;
+  void Arm();
 
   /**
    * @brief disarm the drone
    */
-  void Disarm() const;
+  void Disarm();
 
   /**
    * @brief takeoff to fixed height
@@ -250,6 +241,10 @@ class ControllerBase : public rclcpp::Node {
   bool IsAirborne() const;
 
  private:
+  // Callbacks
+
+  void VehicleOdometryCallback(const px4_msgs::msg::VehicleOdometry::SharedPtr msg);
+
   void TrajSetpointCallback();
 
   void AttitudeSetpointCallback();

@@ -6,16 +6,18 @@ from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 
 def generate_launch_description():
-    launch_rviz = LaunchConfiguration("launch_rviz")
     launch_rviz_launch_arg = DeclareLaunchArgument("launch_rviz", default_value="false",
                                                    description="set to true to launch rviz",
                                                    choices=["false", "true"])
+    rc_mode_launch_arg = DeclareLaunchArgument("rc_mode", default_value="velocity",
+                                               description="different RC control mode",
+                                               choices=["velocity", "attitude", "body_rate"])
     return LaunchDescription([
         launch_rviz_launch_arg,
         Node(
             package="rviz2",
             executable="rviz2",
-            condition=IfCondition(launch_rviz),
+            condition=IfCondition(LaunchConfiguration("launch_rviz")),
             arguments = ["-d", PathJoinSubstitution([FindPackageShare("asl_flight2"), "rviz", "default.rviz"])]
         ),
         Node(
@@ -39,5 +41,8 @@ def generate_launch_description():
             namespace="asl",
             executable="controller_ps4",
             output="screen",
+            parameters=[{
+                "mode": LaunchConfiguration("rc_mode"),
+            }],
         ),
     ])
