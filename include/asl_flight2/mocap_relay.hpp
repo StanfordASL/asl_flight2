@@ -5,6 +5,7 @@
 
 #include <rclcpp/rclcpp.hpp>
 #include <tf2/exceptions.h>
+#include <tf2/time.h>
 #include <tf2_ros/transform_listener.h>
 #include <tf2_ros/buffer.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
@@ -16,10 +17,20 @@ namespace asl {
 
 class MocapRelay : public rclcpp::Node {
  public:
+  /**
+   * @brief constructor of motion capture relay base class
+   *
+   * @param node_name name of the node
+   */
   explicit MocapRelay(const std::string& node_name = "mocap_relay");
 
  protected:
-  void PublishPose(const geometry_msgs::msg::PoseStamped& msg);
+  /**
+   * @brief publish pose data to PX4 visual odometry channel
+   *
+   * @param msg pose message
+   */
+  void PublishPose(const geometry_msgs::msg::PoseStamped& msg) const;
 
  private:
   const std::string world_frame_;

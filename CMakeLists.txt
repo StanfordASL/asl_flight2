@@ -50,11 +50,16 @@ if(gazebo_FOUND)
     install(TARGETS mocap_relay_sim DESTINATION lib/${PROJECT_NAME})
 endif()
 
+# VRPN mocap relay
+add_executable(mocap_relay_vrpn src/mocap/mocap_relay_vrpn.cpp)
+target_link_libraries(mocap_relay_vrpn autonomy_lib)
+
 # installation
 install(TARGETS
     autonomy_lib
-    controller_ps4
     example_takeoff
+    controller_ps4
+    mocap_relay_vrpn
     DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY

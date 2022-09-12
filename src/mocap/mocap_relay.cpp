@@ -12,7 +12,7 @@ MocapRelay::MocapRelay(const std::string& node_name)
     tf_listener_(std::make_shared<tf2_ros::TransformListener>(*tf_buffer_)),
     odom_pub_(this->create_publisher<VehicleVisualOdometry>("/fmu/vehicle_visual_odometry/in", 10)) {}
 
-void MocapRelay::PublishPose(const geometry_msgs::msg::PoseStamped& msg) {
+void MocapRelay::PublishPose(const geometry_msgs::msg::PoseStamped& msg) const {
   geometry_msgs::msg::PoseStamped pose_world = msg;
 
   // transform frame if necessary
@@ -26,7 +26,7 @@ void MocapRelay::PublishPose(const geometry_msgs::msg::PoseStamped& msg) {
     }
   }
 
-  rclcpp::Time timestamp_sample = msg.header.stamp;
+  const rclcpp::Time timestamp_sample(msg.header.stamp);
 
   VehicleVisualOdometry odom{};
   odom.timestamp = this->now().nanoseconds() / 1e3;
@@ -44,6 +44,9 @@ void MocapRelay::PublishPose(const geometry_msgs::msg::PoseStamped& msg) {
   odom.position_variance[0] = NAN;
   odom.position_variance[1] = NAN;
   odom.position_variance[2] = NAN;
+  odom.orientation_variance[0] = NAN;
+  odom.orientation_variance[1] = NAN;
+  odom.orientation_variance[2] = NAN;
 
   odom_pub_->publish(odom);
 }

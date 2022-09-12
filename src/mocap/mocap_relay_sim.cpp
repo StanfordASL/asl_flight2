@@ -1,5 +1,4 @@
 #include <functional>
-#include <iostream>
 
 #include <gazebo/transport/transport.hh>
 #include <gazebo/msgs/msgs.hh>
