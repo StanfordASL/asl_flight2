@@ -42,7 +42,7 @@ add_executable(controller_ps4 src/control/controller_ps4.cpp)
 target_link_libraries(controller_ps4 autonomy_lib)
 
 # Simulation grountruth publisher
-find_package(gazebo)
+find_package(gazebo QUIET)
 if(gazebo_FOUND)
     add_executable(mocap_relay_sim src/mocap/mocap_relay_sim.cpp)
     target_link_libraries(mocap_relay_sim ${GAZEBO_LIBRARIES} autonomy_lib)
