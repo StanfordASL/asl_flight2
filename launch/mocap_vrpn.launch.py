@@ -12,9 +12,12 @@ def generate_launch_description():
                                                    choices=["false", "true"])
     vrpn_name_launch_arg = DeclareLaunchArgument("vrpn_name", default_value="asl_drone",
                                                  description="name of the drone in motion capture")
+    vrpn_server_launch_arg = DeclareLaunchArgument("vrpn_server", default_value="localhost",
+                                                   description="vrpn server address IP")
     return LaunchDescription([
         launch_rviz_launch_arg,
         vrpn_name_launch_arg,
+        vrpn_server_launch_arg,
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(
                 PathJoinSubstitution([
@@ -24,6 +27,19 @@ def generate_launch_description():
                 ])
             ),
             condition=IfCondition(LaunchConfiguration("launch_rviz")),
+        ),
+        Node(
+            package="vrpn_mocap",
+            executable="client_node",
+            parameters=[{
+                "server": LaunchConfiguration("vrpn_server"),
+                "port": 3883,
+                "frame_id": "world_nwu",
+                "update_freq": 100.,
+                "refresh_freq": 1.,
+                "multi_sensor": False,
+            }],
+            output="screen",
         ),
         Node(
             package="tf2_ros",
