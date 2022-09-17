@@ -1,4 +1,5 @@
 # asl_flight2
+![foxy](https://github.com/StanfordASL/asl_flight2/actions/workflows/foxy.yml/badge.svg)
 
 This is a ROS2 package. The suggested folder structure is given below.
 
