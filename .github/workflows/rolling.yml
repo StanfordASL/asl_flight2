@@ -20,7 +20,7 @@ jobs:
         uses: awalsh128/cache-apt-pkgs-action@latest
         with:
           packages: openjdk-11-jdk python3-pip python3-colcon-common-extensions
-          version: 1.0
+          version: foxy-1.0
       - name: install pip dependencies
         run: |
           sudo pip3 install -U empy pyros-genmsg setuptools
