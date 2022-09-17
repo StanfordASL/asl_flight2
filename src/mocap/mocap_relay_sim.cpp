@@ -24,7 +24,7 @@
 #include <memory>
 #include <string>
 
-#include "asl_flight2/mocap_relay.hpp"
+#include "mocap_relay.hpp"
 
 class MocapRelaySim : public asl::MocapRelay
 {

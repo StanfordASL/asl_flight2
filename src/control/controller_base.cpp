@@ -21,7 +21,6 @@
 #include <px4_msgs/msg/vehicle_odometry.hpp>
 #include <px4_msgs/msg/vehicle_rates_setpoint.hpp>
 #include <px4_msgs/msg/vehicle_status.hpp>
-#include <px4_ros_com/frame_transforms.h>
 
 #include <tf2_eigen/tf2_eigen.h>
 
@@ -98,8 +97,10 @@ void ControllerBase::VehicleOdometryCallback(const VehicleOdometry::SharedPtr ms
   vehicle_state_.world_T_body.t = {msg->position[0], msg->position[1], msg->position[2]};
 
   // orientation
-  vehicle_state_.world_T_body.R =
-    px4_ros_com::frame_transforms::utils::quaternion::array_to_eigen_quat(msg->q);
+  vehicle_state_.world_T_body.R.w() = msg->q[0];
+  vehicle_state_.world_T_body.R.x() = msg->q[1];
+  vehicle_state_.world_T_body.R.y() = msg->q[2];
+  vehicle_state_.world_T_body.R.z() = msg->q[3];
 
   // velocity
   vehicle_state_.twist_body.v = {msg->velocity[0], msg->velocity[1], msg->velocity[2]};

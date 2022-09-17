@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "asl_flight2/mocap_relay.hpp"
+#include "mocap_relay.hpp"
 
 #include <memory>
 #include <string>

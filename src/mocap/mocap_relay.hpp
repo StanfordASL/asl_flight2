@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef ASL_FLIGHT2__MOCAP_RELAY_HPP_
-#define ASL_FLIGHT2__MOCAP_RELAY_HPP_
+#ifndef MOCAP__MOCAP_RELAY_HPP_
+#define MOCAP__MOCAP_RELAY_HPP_
 
 #include <rclcpp/rclcpp.hpp>
 #include <tf2/exceptions.h>
@@ -58,4 +58,4 @@ private:
 
 }  // namespace asl
 
-#endif  // ASL_FLIGHT2__MOCAP_RELAY_HPP_
+#endif  // MOCAP__MOCAP_RELAY_HPP_
