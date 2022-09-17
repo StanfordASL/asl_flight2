@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <functional>
-
 #include <gazebo/transport/transport.hh>
 #include <gazebo/msgs/msgs.hh>
 #include <gazebo/gazebo_client.hh>
@@ -22,24 +20,31 @@
 
 #include <px4_msgs/msg/vehicle_visual_odometry.hpp>
 
+#include <functional>
+#include <memory>
+#include <string>
+
 #include "asl_flight2/mocap_relay.hpp"
 
-class MocapRelaySim : public asl::MocapRelay {
- public:
-  explicit MocapRelaySim(const std::string& node_name = "mocap_relay_sim")
-    : asl::MocapRelay(node_name),
-      model_name_(this->declare_parameter("model_name", "iris")),
-      gz_node_(new gazebo::transport::Node()) {
+class MocapRelaySim : public asl::MocapRelay
+{
+public:
+  explicit MocapRelaySim(const std::string & node_name = "mocap_relay_sim")
+  : asl::MocapRelay(node_name),
+    model_name_(this->declare_parameter("model_name", "iris")),
+    gz_node_(new gazebo::transport::Node())
+  {
     gz_node_->Init();
     gz_sub_ = gz_node_->Subscribe("~/pose/info", &MocapRelaySim::PoseCallback, this);
   }
 
- private:
+private:
   const std::string model_name_;
   gazebo::transport::NodePtr gz_node_;
   gazebo::transport::SubscriberPtr gz_sub_;
 
-  void PoseCallback(ConstPosesStampedPtr& msg) {
+  void PoseCallback(ConstPosesStampedPtr & msg)
+  {
     // use ROS2 time
     const rclcpp::Time now = this->now();
 
@@ -47,13 +52,15 @@ class MocapRelaySim : public asl::MocapRelay {
       const auto pose_tmp = msg->pose(i);
       if (pose_tmp.has_name() && pose_tmp.name() == model_name_) {
         const tf2::Transform world_nwu_T_body_nwu(
-          tf2::Quaternion(pose_tmp.orientation().x(),
-                          pose_tmp.orientation().y(),
-                          pose_tmp.orientation().z(),
-                          pose_tmp.orientation().w()),
-          tf2::Vector3(pose_tmp.position().x(),
-                       pose_tmp.position().y(),
-                       pose_tmp.position().z())
+          tf2::Quaternion(
+            pose_tmp.orientation().x(),
+            pose_tmp.orientation().y(),
+            pose_tmp.orientation().z(),
+            pose_tmp.orientation().w()),
+          tf2::Vector3(
+            pose_tmp.position().x(),
+            pose_tmp.position().y(),
+            pose_tmp.position().z())
         );
         const tf2::Transform nwu_T_neu(tf2::Quaternion(1, 0, 0, 0));
         const tf2::Transform world_nwu_T_body_neu = world_nwu_T_body_nwu * nwu_T_neu;
@@ -71,7 +78,8 @@ class MocapRelaySim : public asl::MocapRelay {
 };
 
 
-int main(int argc, char* argv[]) {
+int main(int argc, char * argv[])
+{
   rclcpp::init(argc, argv);
   gazebo::client::setup(argc, argv);
 

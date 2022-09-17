@@ -14,13 +14,16 @@
 
 #include "asl_flight2/controller_base.hpp"
 
-#include <chrono>
-
 #include <sensor_msgs/msg/joy.hpp>
+
+#include <chrono>
+#include <memory>
+#include <string>
 
 using namespace std::chrono_literals;
 
-enum ps4_axes_e {
+enum ps4_axes_e
+{
   LEFT_LR = 0,
   LEFT_UD,
   L2,
@@ -29,7 +32,8 @@ enum ps4_axes_e {
   R2,
 };
 
-enum ps4_btn_e {
+enum ps4_btn_e
+{
   X = 0,
   O,
   TRIANGLE,
@@ -38,20 +42,22 @@ enum ps4_btn_e {
   R1,
 };
 
-class PS4Controller : public asl::ControllerBase {
- public:
+class PS4Controller : public asl::ControllerBase
+{
+public:
   PS4Controller()
-    : asl::ControllerBase("rc_ctrl"),
-      joy_sub_(create_subscription<sensor_msgs::msg::Joy>(
+  : asl::ControllerBase("rc_ctrl"),
+    joy_sub_(create_subscription<sensor_msgs::msg::Joy>(
         "/joy", 10, std::bind(&PS4Controller::JoyCallback, this, std::placeholders::_1))),
-      mode_(this->declare_parameter("mode", "velocity")) {}
+    mode_(this->declare_parameter("mode", "velocity")) {}
 
- private:
+private:
   rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_sub_;
   double target_altitude_;
   const std::string mode_;
 
-  void EnableControl() {
+  void EnableControl()
+  {
     if (mode_ == "velocity") {
       target_altitude_ = -this->vehicle_state_.world_T_body.t.z();
       this->SetAltitude(target_altitude_);
@@ -64,15 +70,18 @@ class PS4Controller : public asl::ControllerBase {
       this->SetBodyRate(Eigen::Vector3d::Zero(), 0.0);
       this->SetBodyRateCtrlMode();
     } else {
-      RCLCPP_ERROR(this->get_logger(),
+      RCLCPP_ERROR(
+        this->get_logger(),
         "Enable control failed: mode %s unsupported", mode_.c_str());
     }
   }
 
-  void DisableControl() {
+  void DisableControl()
+  {
     if ((mode_ == "velocity" && ob_ctrl_mode_.velocity) ||
-        (mode_ == "attitude" && ob_ctrl_mode_.attitude) ||
-        (mode_ == "body_rate" && ob_ctrl_mode_.body_rate)) {
+      (mode_ == "attitude" && ob_ctrl_mode_.attitude) ||
+      (mode_ == "body_rate" && ob_ctrl_mode_.body_rate))
+    {
       this->StopSetpointLoop();
       RCLCPP_INFO(this->get_logger(), "%s control disabled", mode_.c_str());
     } else {
@@ -80,7 +89,8 @@ class PS4Controller : public asl::ControllerBase {
     }
   }
 
-  void UpdateControl(const sensor_msgs::msg::Joy::SharedPtr& msg) {
+  void UpdateControl(const sensor_msgs::msg::Joy::SharedPtr & msg)
+  {
     if (mode_ == "velocity") {
       const Eigen::Vector3d velocity(
         2 * msg->axes[RIGHT_UD],
@@ -96,9 +106,9 @@ class PS4Controller : public asl::ControllerBase {
       const double yaw = -.5 * msg->axes[LEFT_LR];
       const double pitch = -.5 * msg->axes[RIGHT_UD];
       const double roll = -.5 * msg->axes[RIGHT_LR];
-      const Eigen::Quaterniond attitude(Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ())
-                                      * Eigen::AngleAxisd(pitch, Eigen::Vector3d::UnitY())
-                                      * Eigen::AngleAxisd(roll, Eigen::Vector3d::UnitX()));
+      const Eigen::Quaterniond attitude(Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ()) *
+        Eigen::AngleAxisd(pitch, Eigen::Vector3d::UnitY()) *
+        Eigen::AngleAxisd(roll, Eigen::Vector3d::UnitX()));
       this->SetAttitude(attitude, (msg->axes[LEFT_UD] + 1) / 2);
     } else if (mode_ == "body_rate") {
       const double roll_rate = -5 * msg->axes[RIGHT_LR];
@@ -111,7 +121,8 @@ class PS4Controller : public asl::ControllerBase {
     }
   }
 
-  void JoyCallback(const sensor_msgs::msg::Joy::SharedPtr msg) {
+  void JoyCallback(const sensor_msgs::msg::Joy::SharedPtr msg)
+  {
     if (msg->buttons[O] && this->IsAirborne()) {
       this->EnableControl();
     }
@@ -143,7 +154,8 @@ class PS4Controller : public asl::ControllerBase {
   }
 };
 
-int main(int argc, char* argv[]) {
+int main(int argc, char * argv[])
+{
   rclcpp::init(argc, argv);
   rclcpp::spin(std::make_shared<PS4Controller>());
   rclcpp::shutdown();

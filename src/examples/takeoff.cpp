@@ -12,15 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "asl_flight2/controller_base.hpp"
-
 #include <chrono>
+#include <memory>
+
+#include "asl_flight2/controller_base.hpp"
 
 using namespace std::chrono_literals;
 
-class TakeoffController : public asl::ControllerBase {
- public:
-  TakeoffController() : ControllerBase("takeoff_example") {
+class TakeoffController : public asl::ControllerBase
+{
+public:
+  TakeoffController()
+  : ControllerBase("takeoff_example")
+  {
     rclcpp::sleep_for(5s);
 
     this->Arm();
@@ -33,7 +37,8 @@ class TakeoffController : public asl::ControllerBase {
   }
 };
 
-int main(int argc, char* argv[]) {
+int main(int argc, char * argv[])
+{
   rclcpp::init(argc, argv);
   rclcpp::spin(std::make_shared<TakeoffController>());
   rclcpp::shutdown();

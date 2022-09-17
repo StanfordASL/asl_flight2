@@ -12,10 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#ifndef ASL_FLIGHT2__CONTROLLER_BASE_HPP_
+#define ASL_FLIGHT2__CONTROLLER_BASE_HPP_
 
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
+
 #include <rclcpp/rclcpp.hpp>
 
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
@@ -30,34 +32,39 @@
 #include <px4_msgs/msg/vehicle_rates_setpoint.hpp>
 #include <px4_msgs/msg/vehicle_status.hpp>
 
+#include <string>
 
-namespace asl {
+namespace asl
+{
 
 /**
  * @brief      This class describes a controller base.
  */
-class ControllerBase : public rclcpp::Node {
- public:
+class ControllerBase : public rclcpp::Node
+{
+public:
   /**
    * @brief      Constructs a new instance.
    *
    * @param[in]  node_name  The node name
    */
-  explicit ControllerBase(const std::string& node_name, const size_t qos_history_depth = 10);
+  explicit ControllerBase(const std::string & node_name, const size_t qos_history_depth = 10);
 
   /**
    * @brief      Destroys the object.
    */
   virtual ~ControllerBase() = default;
 
- protected:
+protected:
   // working in PX4 default frame NED -- North-East-Down
-  struct VehicleState {
+  struct VehicleState
+  {
     // timestamp
     rclcpp::Time timetsamp;
 
     // pose
-    struct Pose {
+    struct Pose
+    {
       // position
       Eigen::Vector3d t;
       // orientation
@@ -65,13 +72,13 @@ class ControllerBase : public rclcpp::Node {
     } world_T_body;
 
     // velocity
-    struct Twist {
+    struct Twist
+    {
       // linear velocity
       Eigen::Vector3d v;
       // angular velocity
       Eigen::Vector3d w;
     } twist_body;
-
   } vehicle_state_;
 
   // vehicle states
@@ -105,7 +112,8 @@ class ControllerBase : public rclcpp::Node {
   const rclcpp::Publisher<px4_msgs::msg::VehicleCommand>::SharedPtr vehicle_cmd_pub_;
 
   // control modes
-  enum TrajectoryControlMode {
+  enum TrajectoryControlMode
+  {
     POSITION,
     POSITION_VELOCITY,
     POSITION_VELOCITY_ACCELERATION,
@@ -121,7 +129,7 @@ class ControllerBase : public rclcpp::Node {
    * @param position  3D position in global NED frame
    * @param yaw       yaw angle in radians (NED -> clockwise is positive)
    */
-  void SetPosition(const Eigen::Vector3d& position, const double& yaw = 0);
+  void SetPosition(const Eigen::Vector3d & position, const double & yaw = 0);
 
   /**
    * @brief send target velocity to flight controller
@@ -129,14 +137,14 @@ class ControllerBase : public rclcpp::Node {
    * @param velocity  3D velocity in global NED frame
    * @param yaw_rate  yaw velocity in rad/s (NED -> clockwise is positive)
    */
-  void SetVelocity(const Eigen::Vector3d& velocity, const double& yaw_rate = 0);
+  void SetVelocity(const Eigen::Vector3d & velocity, const double & yaw_rate = 0);
 
   /**
    * @brief send target altitude to flight controller
    *
    * @param altitude altitude in [m] (positive going upwards)
    */
-  void SetAltitude(const double& altitude);
+  void SetAltitude(const double & altitude);
 
   /**
    * @brief setn target attitude to flight controller
@@ -145,8 +153,9 @@ class ControllerBase : public rclcpp::Node {
    * @param thrust    target thrust normalized to [0, 1]
    * @param yaw_rate  yaw velocity in rad/s (NED -> clockwise is positive)
    */
-  void SetAttitude(const Eigen::Quaterniond& attitude, const double& thrust,
-                   const double& yaw_rate = NAN);
+  void SetAttitude(
+    const Eigen::Quaterniond & attitude, const double & thrust,
+    const double & yaw_rate = NAN);
 
   /**
    * @brief set body rate control
@@ -154,14 +163,14 @@ class ControllerBase : public rclcpp::Node {
    * @param rates   body frame angular rate in NED frame
    * @param thrust  thrust normalized to [0, 1]
    */
-  void SetBodyRate(const Eigen::Vector3d& rates, const double& thrust);
+  void SetBodyRate(const Eigen::Vector3d & rates, const double & thrust);
 
   /**
    * @brief set trajectory setpoint control mode
    *
    * @param mode see TrajectoryControlMode
    */
-  void SetTrajCtrlMode(const TrajectoryControlMode& mode);
+  void SetTrajCtrlMode(const TrajectoryControlMode & mode);
 
   /**
    * @brief set attitude control mode
@@ -183,7 +192,7 @@ class ControllerBase : public rclcpp::Node {
    *
    * @param msg pointer to a VehicleCommand message to fill
    */
-  void SetDefaultVehicleCommand(px4_msgs::msg::VehicleCommand* msg) const;
+  void SetDefaultVehicleCommand(px4_msgs::msg::VehicleCommand * msg) const;
 
   /**
    * @brief set flight mode
@@ -254,7 +263,7 @@ class ControllerBase : public rclcpp::Node {
    */
   bool IsAirborne() const;
 
- private:
+private:
   // Callbacks
 
   void VehicleOdometryCallback(const px4_msgs::msg::VehicleOdometry::SharedPtr msg);
@@ -270,4 +279,6 @@ class ControllerBase : public rclcpp::Node {
   void DummyCallback();
 };
 
-} // namespace asl
+}  // namespace asl
+
+#endif  // ASL_FLIGHT2__CONTROLLER_BASE_HPP_

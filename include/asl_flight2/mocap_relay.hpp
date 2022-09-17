@@ -12,10 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include <memory>
-#include <string>
+#ifndef ASL_FLIGHT2__MOCAP_RELAY_HPP_
+#define ASL_FLIGHT2__MOCAP_RELAY_HPP_
 
 #include <rclcpp/rclcpp.hpp>
 #include <tf2/exceptions.h>
@@ -27,30 +25,37 @@
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <px4_msgs/msg/vehicle_visual_odometry.hpp>
 
-namespace asl {
+#include <memory>
+#include <string>
 
-class MocapRelay : public rclcpp::Node {
- public:
+namespace asl
+{
+
+class MocapRelay : public rclcpp::Node
+{
+public:
   /**
    * @brief constructor of motion capture relay base class
    *
    * @param node_name name of the node
    */
-  explicit MocapRelay(const std::string& node_name = "mocap_relay");
+  explicit MocapRelay(const std::string & node_name = "mocap_relay");
 
- protected:
+protected:
   /**
    * @brief publish pose data to PX4 visual odometry channel
    *
    * @param msg pose message
    */
-  void PublishPose(const geometry_msgs::msg::PoseStamped& msg) const;
+  void PublishPose(const geometry_msgs::msg::PoseStamped & msg) const;
 
- private:
+private:
   const std::string world_frame_;
   const std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
   const std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
   rclcpp::Publisher<px4_msgs::msg::VehicleVisualOdometry>::SharedPtr odom_pub_;
 };
 
-} // namespace asl
+}  // namespace asl
+
+#endif  // ASL_FLIGHT2__MOCAP_RELAY_HPP_

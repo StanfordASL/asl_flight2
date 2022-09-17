@@ -13,12 +13,13 @@
 # limitations under the License.
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, TimerAction
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
+
 
 def generate_launch_description():
     launch_rviz_launch_arg = DeclareLaunchArgument("launch_rviz", default_value="false",
@@ -36,6 +37,7 @@ def generate_launch_description():
         launch_rviz_launch_arg,
         vrpn_name_launch_arg,
         vrpn_server_launch_arg,
+        rc_mode_launch_arg,
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(
                 PathJoinSubstitution([
@@ -80,4 +82,3 @@ def generate_launch_description():
             ],
         ),
     ])
-

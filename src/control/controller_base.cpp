@@ -14,51 +14,74 @@
 
 #include "asl_flight2/controller_base.hpp"
 
-#include <chrono>
-#include <functional>
-
+#include <px4_msgs/msg/offboard_control_mode.hpp>
+#include <px4_msgs/msg/trajectory_setpoint.hpp>
+#include <px4_msgs/msg/vehicle_command.hpp>
+#include <px4_msgs/msg/vehicle_control_mode.hpp>
+#include <px4_msgs/msg/vehicle_odometry.hpp>
+#include <px4_msgs/msg/vehicle_rates_setpoint.hpp>
+#include <px4_msgs/msg/vehicle_status.hpp>
 #include <px4_ros_com/frame_transforms.h>
+
 #include <tf2_eigen/tf2_eigen.h>
 
-namespace asl {
+#include <chrono>
+#include <functional>
+#include <string>
+
+namespace asl
+{
 
 using namespace std::chrono_literals;
-using namespace px4_msgs::msg;
-using namespace geometry_msgs::msg;
+
+using px4_msgs::msg::OffboardControlMode;
+using px4_msgs::msg::TrajectorySetpoint;
+using px4_msgs::msg::VehicleCommand;
+using px4_msgs::msg::VehicleControlMode;
+using px4_msgs::msg::VehicleOdometry;
+using px4_msgs::msg::VehicleRatesSetpoint;
+using px4_msgs::msg::VehicleStatus;
+using px4_msgs::msg::VehicleAttitudeSetpoint;
+using geometry_msgs::msg::PoseWithCovarianceStamped;
 using std::placeholders::_1;
 
-// TODO: understand ROS2 QoS profiles better
-ControllerBase::ControllerBase(const std::string& node_name, const size_t qos_history_depth)
-    : rclcpp::Node(node_name),
-      setpoint_loop_timer_(nullptr),
-      ctrl_mode_loop_timer_(nullptr),
-      sub_ctrl_mode_(create_subscription<VehicleControlMode>(
-        "/fmu/vehicle_control_mode/out",
-        qos_history_depth,
-        [this](const VehicleControlMode::SharedPtr msg) { vehicle_ctrl_mode_ = *msg; }
-      )),
-      sub_odom_(create_subscription<VehicleOdometry>(
-        "/fmu/vehicle_odometry/out",
-        qos_history_depth,
-        std::bind(&ControllerBase::VehicleOdometryCallback, this, _1)
-      )),
-      sub_status_(create_subscription<VehicleStatus>(
-        "/fmu/vehicle_status/out",
-        qos_history_depth,
-        [this](const VehicleStatus::SharedPtr msg) { vehicle_status_ = *msg; }
-      )),
-      pose_pub_(create_publisher<PoseWithCovarianceStamped>("pose", qos_history_depth)),
-      offboard_mode_pub_(create_publisher<OffboardControlMode>(
-        "/fmu/offboard_control_mode/in", qos_history_depth)),
-      trajectory_pub_(create_publisher<TrajectorySetpoint>(
-        "/fmu/trajectory_setpoint/in", qos_history_depth)),
-      attitude_pub_(create_publisher<VehicleAttitudeSetpoint>(
-        "/fmu/vehicle_attitude_setpoint/in", qos_history_depth)),
-      rates_pub_(create_publisher<VehicleRatesSetpoint>(
-        "/fmu/vehicle_rates_setpoint/in", qos_history_depth)),
-      vehicle_cmd_pub_(create_publisher<VehicleCommand>(
-        "/fmu/vehicle_command/in", qos_history_depth)) {
-
+ControllerBase::ControllerBase(const std::string & node_name, const size_t qos_history_depth)
+: rclcpp::Node(node_name),
+  setpoint_loop_timer_(nullptr),
+  ctrl_mode_loop_timer_(nullptr),
+  sub_ctrl_mode_(create_subscription<VehicleControlMode>(
+      "/fmu/vehicle_control_mode/out",
+      qos_history_depth,
+      [this](const VehicleControlMode::SharedPtr msg) {vehicle_ctrl_mode_ = *msg;}
+    )),
+  sub_odom_(
+    create_subscription<VehicleOdometry>(
+      "/fmu/vehicle_odometry/out",
+      qos_history_depth,
+      std::bind(&ControllerBase::VehicleOdometryCallback, this, _1)
+    )),
+  sub_status_(
+    create_subscription<VehicleStatus>(
+      "/fmu/vehicle_status/out",
+      qos_history_depth,
+      [this](const VehicleStatus::SharedPtr msg) {vehicle_status_ = *msg;}
+    )),
+  pose_pub_(create_publisher<PoseWithCovarianceStamped>("pose", qos_history_depth)),
+  offboard_mode_pub_(
+    create_publisher<OffboardControlMode>(
+      "/fmu/offboard_control_mode/in", qos_history_depth)),
+  trajectory_pub_(
+    create_publisher<TrajectorySetpoint>(
+      "/fmu/trajectory_setpoint/in", qos_history_depth)),
+  attitude_pub_(
+    create_publisher<VehicleAttitudeSetpoint>(
+      "/fmu/vehicle_attitude_setpoint/in", qos_history_depth)),
+  rates_pub_(
+    create_publisher<VehicleRatesSetpoint>(
+      "/fmu/vehicle_rates_setpoint/in", qos_history_depth)),
+  vehicle_cmd_pub_(
+    create_publisher<VehicleCommand>(
+      "/fmu/vehicle_command/in", qos_history_depth)) {
   ob_ctrl_mode_.position = false;
   ob_ctrl_mode_.velocity = false;
   ob_ctrl_mode_.acceleration = false;
@@ -67,7 +90,8 @@ ControllerBase::ControllerBase(const std::string& node_name, const size_t qos_hi
   ob_ctrl_mode_.actuator = false;
 }
 
-void ControllerBase::VehicleOdometryCallback(const VehicleOdometry::SharedPtr msg) {
+void ControllerBase::VehicleOdometryCallback(const VehicleOdometry::SharedPtr msg)
+{
   vehicle_state_.timetsamp = rclcpp::Time(msg->timestamp_sample * 1e3);
 
   // position
@@ -82,7 +106,7 @@ void ControllerBase::VehicleOdometryCallback(const VehicleOdometry::SharedPtr ms
 
   // anguler velocity
   vehicle_state_.twist_body.w =
-    {msg->angular_velocity[0], msg->angular_velocity[1], msg->angular_velocity[1]};
+  {msg->angular_velocity[0], msg->angular_velocity[1], msg->angular_velocity[1]};
 
   // re-publish pose for rviz visualization
   PoseWithCovarianceStamped viz_msg{};
@@ -98,31 +122,37 @@ void ControllerBase::VehicleOdometryCallback(const VehicleOdometry::SharedPtr ms
   pose_pub_->publish(viz_msg);
 }
 
-void ControllerBase::SetPosition(const Eigen::Vector3d& position, const double& yaw) {
+void ControllerBase::SetPosition(const Eigen::Vector3d & position, const double & yaw)
+{
   ob_traj_setpoint_.position[0] = position.x();
   ob_traj_setpoint_.position[1] = position.y();
   ob_traj_setpoint_.position[2] = position.z();
   ob_traj_setpoint_.yaw = yaw;
 }
 
-void ControllerBase::SetVelocity(const Eigen::Vector3d& velocity, const double& yaw_rate) {
+void ControllerBase::SetVelocity(const Eigen::Vector3d & velocity, const double & yaw_rate)
+{
   ob_traj_setpoint_.velocity[0] = velocity.x();
   ob_traj_setpoint_.velocity[1] = velocity.y();
   ob_traj_setpoint_.velocity[2] = velocity.z();
   ob_traj_setpoint_.yawspeed = yaw_rate;
 }
 
-void ControllerBase::SetAltitude(const double& altitude) {
+void ControllerBase::SetAltitude(const double & altitude)
+{
   ob_traj_setpoint_.position[2] = -altitude;
 }
 
-void ControllerBase::SetAttitude(const Eigen::Quaterniond& attitude,
-                                 const double& thrust,
-                                 const double& yaw_rate) {
+void ControllerBase::SetAttitude(
+  const Eigen::Quaterniond & attitude,
+  const double & thrust,
+  const double & yaw_rate)
+{
   double safe_thrust = thrust;
   if (thrust < 0 || thrust > 1) {
     safe_thrust = 0.0;
-    RCLCPP_ERROR(this->get_logger(),
+    RCLCPP_ERROR(
+      this->get_logger(),
       "provided thrust %d is not normalized to [0, 1], using 0 thrust", thrust);
   }
 
@@ -134,11 +164,13 @@ void ControllerBase::SetAttitude(const Eigen::Quaterniond& attitude,
   ob_attitude_setpoint_.yaw_sp_move_rate = yaw_rate;
 }
 
-void ControllerBase::SetBodyRate(const Eigen::Vector3d& rates, const double& thrust) {
+void ControllerBase::SetBodyRate(const Eigen::Vector3d & rates, const double & thrust)
+{
   double safe_thrust = thrust;
   if (thrust < 0 || thrust > 1) {
     safe_thrust = 0.0;
-    RCLCPP_ERROR(this->get_logger(),
+    RCLCPP_ERROR(
+      this->get_logger(),
       "provided thrust %d is not normalized to [0, 1], using 0 thrust", thrust);
   }
 
@@ -148,59 +180,60 @@ void ControllerBase::SetBodyRate(const Eigen::Vector3d& rates, const double& thr
   ob_rate_setpoint_.thrust_body[2] = -safe_thrust;
 }
 
-void ControllerBase::SetTrajCtrlMode(const TrajectoryControlMode& mode) {
+void ControllerBase::SetTrajCtrlMode(const TrajectoryControlMode & mode)
+{
   if (ob_ctrl_mode_.position) {
     RCLCPP_WARN(this->get_logger(), "SetTrajCtrlMode ignore: already eanbled");
-    return ;
+    return;
   }
 
   switch (mode) {
-  // position control
-  case POSITION:
-    ob_traj_setpoint_.velocity[0] = NAN;
-    ob_traj_setpoint_.velocity[1] = NAN;
-    ob_traj_setpoint_.velocity[2] = NAN;
-    ob_traj_setpoint_.yawspeed = NAN;
-    __attribute__ ((fallthrough));
-  case POSITION_VELOCITY:
-    ob_traj_setpoint_.acceleration[0] = NAN;
-    ob_traj_setpoint_.acceleration[1] = NAN;
-    ob_traj_setpoint_.acceleration[2] = NAN;
-    __attribute__ ((fallthrough));
-  case POSITION_VELOCITY_ACCELERATION:
-    ob_ctrl_mode_.position = true;
-    break;
+    // position control
+    case POSITION:
+      ob_traj_setpoint_.velocity[0] = NAN;
+      ob_traj_setpoint_.velocity[1] = NAN;
+      ob_traj_setpoint_.velocity[2] = NAN;
+      ob_traj_setpoint_.yawspeed = NAN;
+      __attribute__ ((fallthrough));
+    case POSITION_VELOCITY:
+      ob_traj_setpoint_.acceleration[0] = NAN;
+      ob_traj_setpoint_.acceleration[1] = NAN;
+      ob_traj_setpoint_.acceleration[2] = NAN;
+      __attribute__ ((fallthrough));
+    case POSITION_VELOCITY_ACCELERATION:
+      ob_ctrl_mode_.position = true;
+      break;
 
-  // velocity control
-  case VELOCITY:
-    ob_traj_setpoint_.position[2] = NAN;
-    __attribute__ ((fallthrough));
-  case VELOCITY_ALTITUDE:
-    ob_traj_setpoint_.acceleration[0] = NAN;
-    ob_traj_setpoint_.acceleration[1] = NAN;
-    ob_traj_setpoint_.acceleration[2] = NAN;
-    __attribute__ ((fallthrough));
-  case VELOCITY_ALTITUDE_ACCELERATION:
-    ob_traj_setpoint_.position[0] = NAN;
-    ob_traj_setpoint_.position[1] = NAN;
-    ob_traj_setpoint_.yaw = NAN;
-    ob_ctrl_mode_.position = false;
-    ob_ctrl_mode_.velocity = true;
-    break;
+    // velocity control
+    case VELOCITY:
+      ob_traj_setpoint_.position[2] = NAN;
+      __attribute__ ((fallthrough));
+    case VELOCITY_ALTITUDE:
+      ob_traj_setpoint_.acceleration[0] = NAN;
+      ob_traj_setpoint_.acceleration[1] = NAN;
+      ob_traj_setpoint_.acceleration[2] = NAN;
+      __attribute__ ((fallthrough));
+    case VELOCITY_ALTITUDE_ACCELERATION:
+      ob_traj_setpoint_.position[0] = NAN;
+      ob_traj_setpoint_.position[1] = NAN;
+      ob_traj_setpoint_.yaw = NAN;
+      ob_ctrl_mode_.position = false;
+      ob_ctrl_mode_.velocity = true;
+      break;
 
-  // acceleration control
-  case ACCELERATION:
-    ob_ctrl_mode_.position = false;
-    ob_ctrl_mode_.velocity = false;
-    ob_ctrl_mode_.acceleration = true;
+    // acceleration control
+    case ACCELERATION:
+      ob_ctrl_mode_.position = false;
+      ob_ctrl_mode_.velocity = false;
+      ob_ctrl_mode_.acceleration = true;
 
-    ob_traj_setpoint_.position[0] = NAN;
-    ob_traj_setpoint_.position[1] = NAN;
-    ob_traj_setpoint_.position[2] = NAN;
-    ob_traj_setpoint_.velocity[0] = NAN;
-    ob_traj_setpoint_.velocity[1] = NAN;
-    ob_traj_setpoint_.velocity[2] = NAN;
-    break;
+      ob_traj_setpoint_.position[0] = NAN;
+      ob_traj_setpoint_.position[1] = NAN;
+      ob_traj_setpoint_.position[2] = NAN;
+      ob_traj_setpoint_.velocity[0] = NAN;
+      ob_traj_setpoint_.velocity[1] = NAN;
+      ob_traj_setpoint_.velocity[2] = NAN;
+      break;
   }
 
   setpoint_loop_timer_ = this->create_wall_timer(
@@ -211,13 +244,15 @@ void ControllerBase::SetTrajCtrlMode(const TrajectoryControlMode& mode) {
   RCLCPP_INFO(this->get_logger(), "Trajectory control mode enabled");
 }
 
-void ControllerBase::SetAttitudeCtrlMode() {
+void ControllerBase::SetAttitudeCtrlMode()
+{
   if (!ob_ctrl_mode_.position &&
-      !ob_ctrl_mode_.velocity &&
-      !ob_ctrl_mode_.acceleration &&
-      ob_ctrl_mode_.attitude) {
+    !ob_ctrl_mode_.velocity &&
+    !ob_ctrl_mode_.acceleration &&
+    ob_ctrl_mode_.attitude)
+  {
     RCLCPP_WARN(this->get_logger(), "SetAttitudeCtrlMode ignore: already eanbled");
-    return ;
+    return;
   }
 
   ob_ctrl_mode_.position = false;
@@ -236,14 +271,16 @@ void ControllerBase::SetAttitudeCtrlMode() {
   RCLCPP_INFO(this->get_logger(), "Attitude control mode enabled");
 }
 
-void ControllerBase::SetBodyRateCtrlMode() {
+void ControllerBase::SetBodyRateCtrlMode()
+{
   if (!ob_ctrl_mode_.position &&
-      !ob_ctrl_mode_.velocity &&
-      !ob_ctrl_mode_.acceleration &&
-      !ob_ctrl_mode_.attitude &&
-      ob_ctrl_mode_.body_rate) {
+    !ob_ctrl_mode_.velocity &&
+    !ob_ctrl_mode_.acceleration &&
+    !ob_ctrl_mode_.attitude &&
+    ob_ctrl_mode_.body_rate)
+  {
     RCLCPP_WARN(this->get_logger(), "SetBodyRateCtrlMode ignore: already eanbled");
-    return ;
+    return;
   }
 
   ob_ctrl_mode_.position = false;
@@ -263,10 +300,11 @@ void ControllerBase::SetBodyRateCtrlMode() {
   RCLCPP_INFO(this->get_logger(), "Body rate control mode enabled");
 }
 
-void ControllerBase::StopSetpointLoop() {
+void ControllerBase::StopSetpointLoop()
+{
   if (setpoint_loop_timer_ == nullptr) {
     RCLCPP_WARN(this->get_logger(), "No active setpoint loop");
-    return ;
+    return;
   }
 
   SetHoldMode();
@@ -283,7 +321,8 @@ void ControllerBase::StopSetpointLoop() {
     1s, std::bind(&ControllerBase::DummyCallback, this));
 }
 
-void ControllerBase::SetDefaultVehicleCommand(VehicleCommand* msg) const {
+void ControllerBase::SetDefaultVehicleCommand(VehicleCommand * msg) const
+{
   msg->timestamp = this->now().nanoseconds() / 1000;
   msg->target_system = 1;
   msg->target_component = 1;
@@ -294,7 +333,8 @@ void ControllerBase::SetDefaultVehicleCommand(VehicleCommand* msg) const {
 
 // @see https://github.com/PX4/PX4-Autopilot/blob/main/src/modules/commander/px4_custom_mode.h
 // for the custom modes used below
-void ControllerBase::SetFlightMode(float main_mode_offboard, float sub_mode) {
+void ControllerBase::SetFlightMode(float main_mode_offboard, float sub_mode)
+{
   constexpr float base_mode_custom = 1;
 
   VehicleCommand msg{};
@@ -307,14 +347,16 @@ void ControllerBase::SetFlightMode(float main_mode_offboard, float sub_mode) {
   vehicle_cmd_pub_->publish(msg);
 }
 
-void ControllerBase::SetOffboardMode() {
+void ControllerBase::SetOffboardMode()
+{
   constexpr float main_mode_offboard = 6;
   SetFlightMode(main_mode_offboard);
 
   RCLCPP_INFO(this->get_logger(), "Mode switch: offboard control");
 }
 
-void ControllerBase::SetHoldMode() {
+void ControllerBase::SetHoldMode()
+{
   constexpr float main_mode_auto = 4;
   constexpr float sub_mode_loiter = 3;
   SetFlightMode(main_mode_auto, sub_mode_loiter);
@@ -322,10 +364,11 @@ void ControllerBase::SetHoldMode() {
   RCLCPP_INFO(this->get_logger(), "Mode switch: hold");
 }
 
-void ControllerBase::Arm() {
+void ControllerBase::Arm()
+{
   if (Armed()) {
     RCLCPP_WARN(this->get_logger(), "Arm ignored: vehicle already armed");
-    return ;
+    return;
   }
 
   VehicleCommand msg{};
@@ -338,13 +381,14 @@ void ControllerBase::Arm() {
   RCLCPP_INFO(this->get_logger(), "Armed");
 }
 
-void ControllerBase::Disarm() {
+void ControllerBase::Disarm()
+{
   if (IsAirborne()) {
     RCLCPP_WARN(this->get_logger(), "Disarm ignored: vehicle in air");
-    return ;
+    return;
   } else if (!Armed()) {
     RCLCPP_WARN(this->get_logger(), "Disarm ignored: vehicle not armed");
-    return ;
+    return;
   }
 
   VehicleCommand msg{};
@@ -357,16 +401,17 @@ void ControllerBase::Disarm() {
   RCLCPP_INFO(this->get_logger(), "Disarmed");
 }
 
-void ControllerBase::Takeoff() {
+void ControllerBase::Takeoff()
+{
   if (!Armed()) {
     RCLCPP_WARN(this->get_logger(), "Takeoff ignored: vehicle not armed");
-    return ;
+    return;
   } else if (IsAirborne()) {
     RCLCPP_WARN(this->get_logger(), "Takeoff ignored: vehicle already in air");
-    return ;
+    return;
   } else if (TakeoffInProgress()) {
     RCLCPP_WARN(this->get_logger(), "Takeoff ignored: takeoff in progress");
-    return ;
+    return;
   }
 
   VehicleCommand msg{};
@@ -378,26 +423,27 @@ void ControllerBase::Takeoff() {
   msg.param4 = NAN;
   msg.param5 = NAN;
   msg.param6 = NAN;
-  msg.param7 = 1.0; // any non-NAN number is ok
+  msg.param7 = 1.0;  // any non-NAN number is ok
 
   vehicle_cmd_pub_->publish(msg);
 
   RCLCPP_INFO(this->get_logger(), "Takeoff initiated");
 }
 
-void ControllerBase::Land() {
+void ControllerBase::Land()
+{
   if (!Armed()) {
     RCLCPP_WARN(this->get_logger(), "Land ignored: vehicle not armed");
-    return ;
+    return;
   } else if (!IsAirborne()) {
     RCLCPP_WARN(this->get_logger(), "Land ignored: vehicle already on the ground");
-    return ;
+    return;
   } else if (LandingInProgress()) {
     RCLCPP_WARN(this->get_logger(), "Land ignored: landing in progress");
-    return ;
+    return;
   }
 
-  StopSetpointLoop(); // stop setpoint loop
+  StopSetpointLoop();  // stop setpoint loop
 
   VehicleCommand msg{};
   this->SetDefaultVehicleCommand(&msg);
@@ -408,45 +454,53 @@ void ControllerBase::Land() {
   msg.param4 = NAN;
   msg.param5 = NAN;
   msg.param6 = NAN;
-  msg.param7 = 0.0; // any non-NAN number is ok
+  msg.param7 = 0.0;  // any non-NAN number is ok
 
   vehicle_cmd_pub_->publish(msg);
 
   RCLCPP_INFO(this->get_logger(), "Land initiated");
 }
 
-bool ControllerBase::Armed() const {
+bool ControllerBase::Armed() const
+{
   return vehicle_status_.arming_state == VehicleStatus::ARMING_STATE_ARMED;
 }
 
-bool ControllerBase::TakeoffInProgress() const {
+bool ControllerBase::TakeoffInProgress() const
+{
   return vehicle_status_.nav_state == VehicleStatus::NAVIGATION_STATE_AUTO_TAKEOFF;
 }
 
-bool ControllerBase::LandingInProgress() const {
+bool ControllerBase::LandingInProgress() const
+{
   return vehicle_status_.nav_state == VehicleStatus::NAVIGATION_STATE_AUTO_LAND;
 }
 
-bool ControllerBase::IsAirborne() const {
+bool ControllerBase::IsAirborne() const
+{
   return vehicle_status_.takeoff_time != 0;
 }
 
-void ControllerBase::TrajSetpointCallback() {
+void ControllerBase::TrajSetpointCallback()
+{
   ob_traj_setpoint_.timestamp = this->now().nanoseconds() / 1000;
   trajectory_pub_->publish(ob_traj_setpoint_);
 }
 
-void ControllerBase::AttitudeSetpointCallback() {
+void ControllerBase::AttitudeSetpointCallback()
+{
   ob_attitude_setpoint_.timestamp = this->now().nanoseconds() / 1000;
   attitude_pub_->publish(ob_attitude_setpoint_);
 }
 
-void ControllerBase::RatesSetpointCallback() {
+void ControllerBase::RatesSetpointCallback()
+{
   ob_rate_setpoint_.timestamp = this->now().nanoseconds() / 1000;
   rates_pub_->publish(ob_rate_setpoint_);
 }
 
-void ControllerBase::OffboardControlModeCallback() {
+void ControllerBase::OffboardControlModeCallback()
+{
   ob_ctrl_mode_.timestamp = this->now().nanoseconds() / 1000;
   offboard_mode_pub_->publish(ob_ctrl_mode_);
 
@@ -456,7 +510,6 @@ void ControllerBase::OffboardControlModeCallback() {
   }
 }
 
-void ControllerBase::DummyCallback() {} // no op
+void ControllerBase::DummyCallback() {}  // no op
 
-} // namespace asl
-
+}  // namespace asl

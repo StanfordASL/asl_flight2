@@ -17,17 +17,18 @@ from launch.actions import DeclareLaunchArgument, ExecuteProcess
 from launch.conditions import IfCondition, UnlessCondition
 from launch.substitutions import FindExecutable, LaunchConfiguration
 
+
 def generate_launch_description():
     sim_launch_arg = DeclareLaunchArgument("sim",
-        default_value="true",
-        description="use simulation (UDP connection)",
-        choices=["false", "true"])
+                                           default_value="true",
+                                           description="use simulation (UDP connection)",
+                                           choices=["false", "true"])
     device_launch_arg = DeclareLaunchArgument("device",
-        default_value="/dev/ttyS4",
-        description="device for UART connection")
+                                              default_value="/dev/ttyS4",
+                                              description="device for UART connection")
     baudrate_launch_arg = DeclareLaunchArgument("baudrate",
-        default_value="921600",
-        description="UART baudrate")
+                                                default_value="921600",
+                                                description="UART baudrate")
 
     return LaunchDescription([
         sim_launch_arg,

@@ -19,6 +19,7 @@ from launch.substitutions import PathJoinSubstitution
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 
+
 def generate_launch_description():
     return LaunchDescription([
         IncludeLaunchDescription(
@@ -33,7 +34,7 @@ def generate_launch_description():
         Node(
             package="tf2_ros",
             executable="static_transform_publisher",
-            arguments = ["0", "0", "0", "1", "0", "0", "0", "world_ned", "world_nwu"],
+            arguments=["0", "0", "0", "1", "0", "0", "0", "world_ned", "world_nwu"],
         ),
         # wait for px4_agenet
         TimerAction(

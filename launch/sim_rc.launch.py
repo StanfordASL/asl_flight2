@@ -20,6 +20,7 @@ from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 
+
 def generate_launch_description():
     launch_rviz_launch_arg = DeclareLaunchArgument("launch_rviz", default_value="false",
                                                    description="set to true to launch rviz",
