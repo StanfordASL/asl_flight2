@@ -154,7 +154,7 @@ void ControllerBase::SetAttitude(
     safe_thrust = 0.0;
     RCLCPP_ERROR(
       this->get_logger(),
-      "provided thrust %d is not normalized to [0, 1], using 0 thrust", thrust);
+      "provided thrust %lf is not normalized to [0, 1], using 0 thrust", thrust);
   }
 
   ob_attitude_setpoint_.q_d[0] = attitude.w();
@@ -172,7 +172,7 @@ void ControllerBase::SetBodyRate(const Eigen::Vector3d & rates, const double & t
     safe_thrust = 0.0;
     RCLCPP_ERROR(
       this->get_logger(),
-      "provided thrust %d is not normalized to [0, 1], using 0 thrust", thrust);
+      "provided thrust %lf is not normalized to [0, 1], using 0 thrust", thrust);
   }
 
   ob_rate_setpoint_.roll = rates.x();
