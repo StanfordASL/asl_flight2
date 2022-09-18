@@ -21,11 +21,11 @@ from launch_ros.actions import Node
 def generate_launch_description():
     return LaunchDescription([
         Node(
-            package="rviz2",
-            executable="rviz2",
+            package='rviz2',
+            executable='rviz2',
             arguments=[
-                "-d",
-                PathJoinSubstitution([FindPackageShare("asl_flight2"), "rviz", "default.rviz"]),
+                '-d',
+                PathJoinSubstitution([FindPackageShare('asl_flight2'), 'rviz', 'default.rviz']),
             ]
         )
     ])
