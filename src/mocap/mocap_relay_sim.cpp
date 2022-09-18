@@ -16,15 +16,15 @@
 #include <memory>
 #include <string>
 
-#include <gazebo/transport/transport.hh>
-#include <gazebo/msgs/msgs.hh>
-#include <gazebo/gazebo_client.hh>
+#include "mocap_relay.hpp"
+
+#include "gazebo/transport/transport.hh"
+#include "gazebo/msgs/msgs.hh"
+#include "gazebo/gazebo_client.hh"
 
 #include "rclcpp/rclcpp.hpp"
 
 #include "px4_msgs/msg/vehicle_visual_odometry.hpp"
-
-#include "mocap_relay.hpp"
 
 class MocapRelaySim : public asl::MocapRelay
 {
