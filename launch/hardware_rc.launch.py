@@ -66,7 +66,7 @@ def generate_launch_description():
             executable='joy_node',
             name='joy',
         ),
-        # wait for px4_agenet
+        # wait for px4_agent
         TimerAction(
             period=2.0,
             actions=[

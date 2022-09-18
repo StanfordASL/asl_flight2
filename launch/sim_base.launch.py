@@ -36,7 +36,7 @@ def generate_launch_description():
             executable='static_transform_publisher',
             arguments=['0', '0', '0', '1', '0', '0', '0', 'world_ned', 'world_nwu'],
         ),
-        # wait for px4_agenet
+        # wait for px4_agent
         TimerAction(
             period=2.0,
             actions=[
