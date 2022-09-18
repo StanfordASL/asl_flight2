@@ -12,19 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <rclcpp/rclcpp.hpp>
-
-#include <geometry_msgs/msg/pose_stamped.hpp>
-
-#include <tf2/LinearMath/Transform.h>
-#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
-
 #include <functional>
 #include <memory>
 #include <sstream>
 #include <string>
 
 #include "mocap_relay.hpp"
+
+#include "rclcpp/rclcpp.hpp"
+#include "tf2/LinearMath/Transform.h"
+#include "tf2_geometry_msgs/tf2_geometry_msgs.h"
+
+#include "geometry_msgs/msg/pose_stamped.hpp"
 
 using geometry_msgs::msg::PoseStamped;
 

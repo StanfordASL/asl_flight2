@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "asl_flight2/controller_base.hpp"
-
-#include <sensor_msgs/msg/joy.hpp>
-
 #include <chrono>
 #include <memory>
 #include <string>
+
+#include "asl_flight2/controller_base.hpp"
+
+#include "sensor_msgs/msg/joy.hpp"
 
 using namespace std::chrono_literals;
 
