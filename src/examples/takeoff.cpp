@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <chrono>
+#include <functional>
 #include <memory>
 
 #include "asl_flight2/controller_base.hpp"
@@ -23,24 +24,40 @@ class TakeoffController : public asl::ControllerBase
 {
 public:
   TakeoffController()
-  : ControllerBase("takeoff_example")
+  : asl::ControllerBase("example_takeoff")
   {
-    rclcpp::sleep_for(5s);
+    // delay 5s mission start
+    mission_timer_ = this->create_wall_timer(
+      5s, std::bind(&TakeoffController::MissionCallback, this));
+  }
 
+private:
+  rclcpp::TimerBase::SharedPtr mission_timer_;
+
+  void MissionCallback()
+  {
     this->Arm();
-    rclcpp::sleep_for(1s);
+    while (!this->Armed()) {rclcpp::sleep_for(1ms);}
 
     this->Takeoff();
     rclcpp::sleep_for(10s);
 
     this->Land();
+
+    mission_timer_ = nullptr;  // end mission
   }
 };
 
 int main(int argc, char * argv[])
 {
   rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<TakeoffController>());
+
+  rclcpp::Node::SharedPtr node = std::make_shared<TakeoffController>();
+  rclcpp::executors::MultiThreadedExecutor executor;
+  executor.add_node(node);
+  executor.spin();
+
   rclcpp::shutdown();
+
   return 0;
 }

@@ -16,6 +16,7 @@
 
 #include <chrono>
 #include <functional>
+#include <mutex>
 #include <string>
 
 #include "px4_msgs/msg/offboard_control_mode.hpp"
@@ -44,26 +45,56 @@ using px4_msgs::msg::VehicleAttitudeSetpoint;
 using geometry_msgs::msg::PoseWithCovarianceStamped;
 using std::placeholders::_1;
 
+VehicleState::VehicleState()
+: timestamp(0) {}
+
+VehicleState::VehicleState(const VehicleOdometry & odom)
+: timestamp(odom.timestamp_sample * 1e3),
+  world_t_body(odom.position[0], odom.position[1], odom.position[2]),
+  world_R_body(odom.q[0], odom.q[1], odom.q[2], odom.q[3]),
+  v_body(odom.velocity[0], odom.velocity[1], odom.velocity[2]),
+  w_body(odom.angular_velocity[0], odom.angular_velocity[1], odom.angular_velocity[2]) {}
+
 ControllerBase::ControllerBase(const std::string & node_name, const size_t qos_history_depth)
 : rclcpp::Node(node_name),
+  vehicle_odom_(nullptr),
+  vehicle_ctrl_mode_(nullptr),
+  vehicle_status_(nullptr),
   setpoint_loop_timer_(nullptr),
   ctrl_mode_loop_timer_(nullptr),
-  sub_ctrl_mode_(create_subscription<VehicleControlMode>(
+  parallel_cb_group_(create_callback_group(rclcpp::CallbackGroupType::Reentrant)),
+  timer_cb_group_(create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive)),
+  parallel_sub_options_([this]() {
+      rclcpp::SubscriptionOptions options;
+      options.callback_group = this->parallel_cb_group_;
+      return options;
+    } ()),
+  sub_ctrl_mode_(
+    create_subscription<VehicleControlMode>(
       "/fmu/vehicle_control_mode/out",
       qos_history_depth,
-      [this](const VehicleControlMode::SharedPtr msg) {vehicle_ctrl_mode_ = *msg;}
+      [this](const VehicleControlMode::SharedPtr msg) {
+        std::lock_guard<std::mutex> lock(vehicle_ctrl_mode_mtx_);
+        vehicle_ctrl_mode_ = msg;
+      },
+      parallel_sub_options_
     )),
   sub_odom_(
     create_subscription<VehicleOdometry>(
       "/fmu/vehicle_odometry/out",
       qos_history_depth,
-      std::bind(&ControllerBase::VehicleOdometryCallback, this, _1)
+      std::bind(&ControllerBase::VehicleOdometryCallback, this, _1),
+      parallel_sub_options_
     )),
   sub_status_(
     create_subscription<VehicleStatus>(
       "/fmu/vehicle_status/out",
       qos_history_depth,
-      [this](const VehicleStatus::SharedPtr msg) {vehicle_status_ = *msg;}
+      [this](const VehicleStatus::SharedPtr msg) {
+        std::lock_guard<std::mutex> lock(vehicle_status_mtx_);
+        vehicle_status_ = msg;
+      },
+      parallel_sub_options_
     )),
   pose_pub_(create_publisher<PoseWithCovarianceStamped>("pose", qos_history_depth)),
   offboard_mode_pub_(
@@ -91,31 +122,24 @@ ControllerBase::ControllerBase(const std::string & node_name, const size_t qos_h
 
 void ControllerBase::VehicleOdometryCallback(const VehicleOdometry::SharedPtr msg)
 {
-  vehicle_state_.timetsamp = rclcpp::Time(msg->timestamp_sample * 1e3);
-
-  // position
-  vehicle_state_.world_T_body.t = {msg->position[0], msg->position[1], msg->position[2]};
-
-  // orientation
-  vehicle_state_.world_T_body.R.w() = msg->q[0];
-  vehicle_state_.world_T_body.R.x() = msg->q[1];
-  vehicle_state_.world_T_body.R.y() = msg->q[2];
-  vehicle_state_.world_T_body.R.z() = msg->q[3];
-
-  // velocity
-  vehicle_state_.twist_body.v = {msg->velocity[0], msg->velocity[1], msg->velocity[2]};
-
-  // anguler velocity
-  vehicle_state_.twist_body.w =
-  {msg->angular_velocity[0], msg->angular_velocity[1], msg->angular_velocity[1]};
+  // update vehicle odometry state
+  {
+    std::lock_guard<std::mutex> lock(vehicle_odom_mtx_);
+    vehicle_odom_ = msg;
+  }
 
   // re-publish pose for rviz visualization
   PoseWithCovarianceStamped viz_msg{};
   viz_msg.header.frame_id = "world_ned";
-  viz_msg.header.stamp = vehicle_state_.timetsamp;
+  viz_msg.header.stamp = rclcpp::Time(msg->timestamp_sample * 1e3);
 
-  viz_msg.pose.pose.position = tf2::toMsg(vehicle_state_.world_T_body.t);
-  viz_msg.pose.pose.orientation = tf2::toMsg(vehicle_state_.world_T_body.R);
+  viz_msg.pose.pose.position.x = msg->position[0];
+  viz_msg.pose.pose.position.y = msg->position[1];
+  viz_msg.pose.pose.position.z = msg->position[2];
+  viz_msg.pose.pose.orientation.w = msg->q[0];
+  viz_msg.pose.pose.orientation.x = msg->q[1];
+  viz_msg.pose.pose.orientation.y = msg->q[2];
+  viz_msg.pose.pose.orientation.z = msg->q[3];
   for (int i = 0; i < 3; ++i) {
     viz_msg.pose.covariance[i * 6 + i] = msg->position_variance[i];
     viz_msg.pose.covariance[(i + 3) * 6 + i + 3] = msg->orientation_variance[i];
@@ -238,9 +262,9 @@ void ControllerBase::SetTrajCtrlMode(const TrajectoryControlMode & mode)
   }
 
   setpoint_loop_timer_ = this->create_wall_timer(
-    50ms, std::bind(&ControllerBase::TrajSetpointCallback, this));
+    50ms, std::bind(&ControllerBase::TrajSetpointCallback, this), timer_cb_group_);
   ctrl_mode_loop_timer_ = this->create_wall_timer(
-    100ms, std::bind(&ControllerBase::OffboardControlModeCallback, this));
+    100ms, std::bind(&ControllerBase::OffboardControlModeCallback, this), timer_cb_group_);
 
   RCLCPP_INFO(this->get_logger(), "Trajectory control mode enabled");
 }
@@ -265,9 +289,9 @@ void ControllerBase::SetAttitudeCtrlMode()
   ob_attitude_setpoint_.thrust_body[1] = 0.0f;
 
   setpoint_loop_timer_ = this->create_wall_timer(
-    20ms, std::bind(&ControllerBase::AttitudeSetpointCallback, this));
+    20ms, std::bind(&ControllerBase::AttitudeSetpointCallback, this), timer_cb_group_);
   ctrl_mode_loop_timer_ = this->create_wall_timer(
-    100ms, std::bind(&ControllerBase::OffboardControlModeCallback, this));
+    100ms, std::bind(&ControllerBase::OffboardControlModeCallback, this), timer_cb_group_);
 
   RCLCPP_INFO(this->get_logger(), "Attitude control mode enabled");
 }
@@ -294,9 +318,9 @@ void ControllerBase::SetBodyRateCtrlMode()
   ob_rate_setpoint_.thrust_body[1] = 0.0f;
 
   setpoint_loop_timer_ = this->create_wall_timer(
-    10ms, std::bind(&ControllerBase::RatesSetpointCallback, this));
+    10ms, std::bind(&ControllerBase::RatesSetpointCallback, this), timer_cb_group_);
   ctrl_mode_loop_timer_ = this->create_wall_timer(
-    100ms, std::bind(&ControllerBase::OffboardControlModeCallback, this));
+    100ms, std::bind(&ControllerBase::OffboardControlModeCallback, this), timer_cb_group_);
 
   RCLCPP_INFO(this->get_logger(), "Body rate control mode enabled");
 }
@@ -319,7 +343,7 @@ void ControllerBase::StopSetpointLoop()
 
   setpoint_loop_timer_ = nullptr;
   ctrl_mode_loop_timer_ = this->create_wall_timer(
-    1s, std::bind(&ControllerBase::DummyCallback, this));
+    1s, std::bind(&ControllerBase::DummyCallback, this), timer_cb_group_);
 }
 
 void ControllerBase::SetDefaultVehicleCommand(VehicleCommand * msg) const
@@ -464,22 +488,33 @@ void ControllerBase::Land()
 
 bool ControllerBase::Armed() const
 {
-  return vehicle_status_.arming_state == VehicleStatus::ARMING_STATE_ARMED;
+  std::lock_guard<std::mutex> lock(vehicle_status_mtx_);
+  return vehicle_status_ && vehicle_status_->arming_state == VehicleStatus::ARMING_STATE_ARMED;
 }
 
 bool ControllerBase::TakeoffInProgress() const
 {
-  return vehicle_status_.nav_state == VehicleStatus::NAVIGATION_STATE_AUTO_TAKEOFF;
+  std::lock_guard<std::mutex> lock(vehicle_status_mtx_);
+  return vehicle_status_ &&
+         vehicle_status_->nav_state == VehicleStatus::NAVIGATION_STATE_AUTO_TAKEOFF;
 }
 
 bool ControllerBase::LandingInProgress() const
 {
-  return vehicle_status_.nav_state == VehicleStatus::NAVIGATION_STATE_AUTO_LAND;
+  std::lock_guard<std::mutex> lock(vehicle_status_mtx_);
+  return vehicle_status_ && vehicle_status_->nav_state == VehicleStatus::NAVIGATION_STATE_AUTO_LAND;
 }
 
 bool ControllerBase::IsAirborne() const
 {
-  return vehicle_status_.takeoff_time != 0;
+  std::lock_guard<std::mutex> lock(vehicle_status_mtx_);
+  return vehicle_status_ && vehicle_status_->takeoff_time != 0;
+}
+
+bool ControllerBase::OffboardEnabled() const
+{
+  std::lock_guard<std::mutex> lock(vehicle_ctrl_mode_mtx_);
+  return vehicle_ctrl_mode_ && vehicle_ctrl_mode_->flag_control_offboard_enabled == true;
 }
 
 void ControllerBase::TrajSetpointCallback()
@@ -506,8 +541,11 @@ void ControllerBase::OffboardControlModeCallback()
   offboard_mode_pub_->publish(ob_ctrl_mode_);
 
   // lazily enable offboard control mode
-  if (!vehicle_ctrl_mode_.flag_control_offboard_enabled) {
-    SetOffboardMode();
+  {
+    std::lock_guard<std::mutex> lock(vehicle_ctrl_mode_mtx_);
+    if (vehicle_ctrl_mode_ && !vehicle_ctrl_mode_->flag_control_offboard_enabled) {
+      SetOffboardMode();
+    }
   }
 }
 

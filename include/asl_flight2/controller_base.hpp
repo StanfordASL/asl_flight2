@@ -18,6 +18,7 @@
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
 
+#include <mutex>
 #include <string>
 
 #include "rclcpp/rclcpp.hpp"
@@ -37,6 +38,35 @@ namespace asl
 {
 
 /**
+ * @brief drone state data structure working in PX4 default frame NED -- North-East-Down
+ */
+struct VehicleState
+{
+  /**
+   * @brief default constructor
+   */
+  VehicleState();
+
+  /**
+   * @brief construct from VehicleOdometry message
+   *
+   * @param odom VehicleOdometry message
+   */
+  explicit VehicleState(const px4_msgs::msg::VehicleOdometry & odom);
+
+  // timestamp
+  rclcpp::Time timestamp;
+
+  // pose
+  Eigen::Vector3d world_t_body;     // translation
+  Eigen::Quaterniond world_R_body;  // rotation
+
+  // twist
+  Eigen::Vector3d v_body;           // linear velocity
+  Eigen::Vector3d w_body;           // angular velocity
+};
+
+/**
  * @brief      This class describes a controller base.
  */
 class ControllerBase : public rclcpp::Node
@@ -54,35 +84,29 @@ public:
    */
   virtual ~ControllerBase() = default;
 
-protected:
-  // working in PX4 default frame NED -- North-East-Down
-  struct VehicleState
+  /**
+   * @brief get the latest vehicle state
+   *
+   * @return latest VehicleState
+   */
+  inline VehicleState GetVehicleState() const
   {
-    // timestamp
-    rclcpp::Time timetsamp;
+    std::lock_guard<std::mutex> lock(vehicle_odom_mtx_);
+    if (vehicle_odom_) {
+      return VehicleState(*vehicle_odom_);
+    } else {
+      return VehicleState();
+    }
+  }
 
-    // pose
-    struct Pose
-    {
-      // position
-      Eigen::Vector3d t;
-      // orientation
-      Eigen::Quaterniond R;
-    } world_T_body;
-
-    // velocity
-    struct Twist
-    {
-      // linear velocity
-      Eigen::Vector3d v;
-      // angular velocity
-      Eigen::Vector3d w;
-    } twist_body;
-  } vehicle_state_;
-
+protected:
   // vehicle states
-  px4_msgs::msg::VehicleControlMode vehicle_ctrl_mode_;
-  px4_msgs::msg::VehicleStatus vehicle_status_;
+  px4_msgs::msg::VehicleOdometry::SharedPtr vehicle_odom_;
+  px4_msgs::msg::VehicleControlMode::SharedPtr vehicle_ctrl_mode_;
+  px4_msgs::msg::VehicleStatus::SharedPtr vehicle_status_;
+  mutable std::mutex vehicle_odom_mtx_;
+  mutable std::mutex vehicle_ctrl_mode_mtx_;
+  mutable std::mutex vehicle_status_mtx_;
 
   // control mode sent together with setpoint messages
   px4_msgs::msg::OffboardControlMode ob_ctrl_mode_;
@@ -96,8 +120,12 @@ protected:
   rclcpp::TimerBase::SharedPtr setpoint_loop_timer_;
   rclcpp::TimerBase::SharedPtr ctrl_mode_loop_timer_;
 
+  // callback groups
+  const rclcpp::CallbackGroup::SharedPtr parallel_cb_group_;
+  const rclcpp::CallbackGroup::SharedPtr timer_cb_group_;
+  const rclcpp::SubscriptionOptions parallel_sub_options_;
+
   // PX4 message subscriptions
-  const rclcpp::Subscription<px4_msgs::msg::Timesync>::SharedPtr sub_timesync_;
   const rclcpp::Subscription<px4_msgs::msg::VehicleControlMode>::SharedPtr sub_ctrl_mode_;
   const rclcpp::Subscription<px4_msgs::msg::VehicleOdometry>::SharedPtr sub_odom_;
   const rclcpp::Subscription<px4_msgs::msg::VehicleStatus>::SharedPtr sub_status_;
@@ -261,6 +289,13 @@ protected:
    * @return true if vehicle is flying, false otherwise
    */
   bool IsAirborne() const;
+
+  /**
+   * @brief check if offboard control is enabled
+   *
+   * @return true if offboard control is enabled
+   */
+  bool OffboardEnabled() const;
 
 private:
   // Callbacks

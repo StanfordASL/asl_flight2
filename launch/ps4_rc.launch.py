@@ -13,10 +13,10 @@
 # limitations under the License.
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, TimerAction
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, PythonExpression
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 
@@ -25,18 +25,27 @@ def generate_launch_description():
     launch_rviz_launch_arg = DeclareLaunchArgument('launch_rviz', default_value='false',
                                                    description='set to true to launch rviz',
                                                    choices=['false', 'true'])
+    name_launch_arg = DeclareLaunchArgument('name', default_value='iris',
+                                            description='name of the drone in mocap or sim')
+    vrpn_server_launch_arg = DeclareLaunchArgument('vrpn_server', default_value='localhost',
+                                                   description='vrpn server address IP')
     rc_mode_launch_arg = DeclareLaunchArgument('rc_mode', default_value='velocity',
                                                description='different RC control mode',
                                                choices=['velocity', 'attitude', 'body_rate'])
-    asl_flight2_share = FindPackageShare('asl_flight2')
+    platform_launch_arg = DeclareLaunchArgument('platform', default_value='sim',
+                                                description='run on simulation or hardware',
+                                                choices=['sim', 'hardware'])
 
     return LaunchDescription([
         launch_rviz_launch_arg,
+        name_launch_arg,
+        vrpn_server_launch_arg,
         rc_mode_launch_arg,
+        platform_launch_arg,
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(
                 PathJoinSubstitution([
-                    asl_flight2_share,
+                    FindPackageShare('asl_flight2'),
                     'launch',
                     'rviz.launch.py',
                 ])
@@ -44,32 +53,34 @@ def generate_launch_description():
             condition=IfCondition(LaunchConfiguration('launch_rviz')),
         ),
         IncludeLaunchDescription(
-            PythonLaunchDescriptionSource(
+            PythonLaunchDescriptionSource([
                 PathJoinSubstitution([
-                    asl_flight2_share,
+                    FindPackageShare('asl_flight2'),
                     'launch',
-                    'sim_base.launch.py',
+                    PythonExpression([
+                        '"', LaunchConfiguration('platform'), '"',
+                        ' + "_base.launch.py"'
+                    ]),
                 ])
-            )
+            ]),
+            launch_arguments={
+                'model_name': LaunchConfiguration('name'),
+                'vrpn_name': LaunchConfiguration('name'),
+                'vrpn_server': LaunchConfiguration('vrpn_server'),
+            }.items()
         ),
         Node(
             package='joy',
             executable='joy_node',
             name='joy',
         ),
-        # wait for px4_agent
-        TimerAction(
-            period=2.0,
-            actions=[
-                Node(
-                    package='asl_flight2',
-                    namespace='asl',
-                    executable='controller_ps4',
-                    output='screen',
-                    parameters=[{
-                        'mode': LaunchConfiguration('rc_mode'),
-                    }],
-                ),
-            ],
+        Node(
+            package='asl_flight2',
+            namespace=LaunchConfiguration('name'),
+            executable='controller_ps4',
+            output='screen',
+            parameters=[{
+                'mode': LaunchConfiguration('rc_mode'),
+            }],
         ),
     ])

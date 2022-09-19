@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, TimerAction
+from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
@@ -44,19 +44,13 @@ def generate_launch_description():
             executable='static_transform_publisher',
             arguments=['0', '0', '0', '1', '0', '0', '0', 'world_ned', 'world_nwu'],
         ),
-        # wait for px4_agent
-        TimerAction(
-            period=2.0,
-            actions=[
-                Node(
-                    package='asl_flight2',
-                    namespace='asl',
-                    executable='mocap_relay_vrpn',
-                    output='screen',
-                    parameters=[{
-                        'vrpn_name': LaunchConfiguration('vrpn_name'),
-                    }],
-                ),
-            ],
+        Node(
+            package='asl_flight2',
+            namespace='asl',
+            executable='mocap_relay_vrpn',
+            output='screen',
+            parameters=[{
+                'vrpn_name': LaunchConfiguration('vrpn_name'),
+            }],
         ),
     ])

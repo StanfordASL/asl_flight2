@@ -59,7 +59,7 @@ private:
   void EnableControl()
   {
     if (mode_ == "velocity") {
-      target_altitude_ = -this->vehicle_state_.world_T_body.t.z();
+      target_altitude_ = -this->GetVehicleState().world_t_body.z();
       this->SetAltitude(target_altitude_);
       this->SetVelocity({0.0f, 0.0f, NAN}, 0.0f);
       this->SetTrajCtrlMode(VELOCITY_ALTITUDE);
@@ -148,7 +148,7 @@ private:
     }
 
     // set target position
-    if (vehicle_ctrl_mode_.flag_control_offboard_enabled) {
+    if (this->OffboardEnabled()) {
       UpdateControl(msg);
     }
   }
@@ -157,7 +157,11 @@ private:
 int main(int argc, char * argv[])
 {
   rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<PS4Controller>());
+
+  rclcpp::executors::MultiThreadedExecutor executor;
+  executor.add_node(std::make_shared<PS4Controller>());
+  executor.spin();
+
   rclcpp::shutdown();
   return 0;
 }
