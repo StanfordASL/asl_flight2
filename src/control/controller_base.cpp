@@ -71,7 +71,7 @@ ControllerBase::ControllerBase(const std::string & node_name, const size_t qos_h
     } ()),
   sub_ctrl_mode_(
     create_subscription<VehicleControlMode>(
-      "/fmu/vehicle_control_mode/out",
+      "fmu/vehicle_control_mode/out",
       qos_history_depth,
       [this](const VehicleControlMode::SharedPtr msg) {
         std::lock_guard<std::mutex> lock(vehicle_ctrl_mode_mtx_);
@@ -81,14 +81,14 @@ ControllerBase::ControllerBase(const std::string & node_name, const size_t qos_h
     )),
   sub_odom_(
     create_subscription<VehicleOdometry>(
-      "/fmu/vehicle_odometry/out",
+      "fmu/vehicle_odometry/out",
       qos_history_depth,
       std::bind(&ControllerBase::VehicleOdometryCallback, this, _1),
       parallel_sub_options_
     )),
   sub_status_(
     create_subscription<VehicleStatus>(
-      "/fmu/vehicle_status/out",
+      "fmu/vehicle_status/out",
       qos_history_depth,
       [this](const VehicleStatus::SharedPtr msg) {
         std::lock_guard<std::mutex> lock(vehicle_status_mtx_);
@@ -99,19 +99,19 @@ ControllerBase::ControllerBase(const std::string & node_name, const size_t qos_h
   pose_pub_(create_publisher<PoseWithCovarianceStamped>("pose", qos_history_depth)),
   offboard_mode_pub_(
     create_publisher<OffboardControlMode>(
-      "/fmu/offboard_control_mode/in", qos_history_depth)),
+      "fmu/offboard_control_mode/in", qos_history_depth)),
   trajectory_pub_(
     create_publisher<TrajectorySetpoint>(
-      "/fmu/trajectory_setpoint/in", qos_history_depth)),
+      "fmu/trajectory_setpoint/in", qos_history_depth)),
   attitude_pub_(
     create_publisher<VehicleAttitudeSetpoint>(
-      "/fmu/vehicle_attitude_setpoint/in", qos_history_depth)),
+      "fmu/vehicle_attitude_setpoint/in", qos_history_depth)),
   rates_pub_(
     create_publisher<VehicleRatesSetpoint>(
-      "/fmu/vehicle_rates_setpoint/in", qos_history_depth)),
+      "fmu/vehicle_rates_setpoint/in", qos_history_depth)),
   vehicle_cmd_pub_(
     create_publisher<VehicleCommand>(
-      "/fmu/vehicle_command/in", qos_history_depth)) {
+      "fmu/vehicle_command/in", qos_history_depth)) {
   ob_ctrl_mode_.position = false;
   ob_ctrl_mode_.velocity = false;
   ob_ctrl_mode_.acceleration = false;

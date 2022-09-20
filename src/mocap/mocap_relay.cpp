@@ -28,7 +28,7 @@ MocapRelay::MocapRelay(const std::string & node_name)
   world_frame_(this->declare_parameter("world_frame", "world_ned")),
   tf_buffer_(std::make_unique<tf2_ros::Buffer>(this->get_clock())),
   tf_listener_(std::make_shared<tf2_ros::TransformListener>(*tf_buffer_)),
-  odom_pub_(this->create_publisher<VehicleVisualOdometry>("/fmu/vehicle_visual_odometry/in", 10)) {}
+  odom_pub_(this->create_publisher<VehicleVisualOdometry>("fmu/vehicle_visual_odometry/in", 10)) {}
 
 void MocapRelay::PublishPose(const geometry_msgs::msg::PoseStamped & msg) const
 {
