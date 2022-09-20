@@ -163,6 +163,13 @@ void ControllerBase::SetVelocity(const Eigen::Vector3d & velocity, const double 
   ob_traj_setpoint_.yawspeed = yaw_rate;
 }
 
+void ControllerBase::SetAcceleration(const Eigen::Vector3d & acceleration)
+{
+  ob_traj_setpoint_.acceleration[0] = acceleration.x();
+  ob_traj_setpoint_.acceleration[1] = acceleration.y();
+  ob_traj_setpoint_.acceleration[2] = acceleration.z();
+}
+
 void ControllerBase::SetAltitude(const double & altitude)
 {
   ob_traj_setpoint_.position[2] = -altitude;
@@ -327,7 +334,7 @@ void ControllerBase::SetBodyRateCtrlMode()
 
 void ControllerBase::StopSetpointLoop()
 {
-  if (setpoint_loop_timer_ == nullptr) {
+  if (!this->SetpointRunning()) {
     RCLCPP_WARN(this->get_logger(), "No active setpoint loop");
     return;
   }
@@ -515,6 +522,11 @@ bool ControllerBase::OffboardEnabled() const
 {
   std::lock_guard<std::mutex> lock(vehicle_ctrl_mode_mtx_);
   return vehicle_ctrl_mode_ && vehicle_ctrl_mode_->flag_control_offboard_enabled == true;
+}
+
+bool ControllerBase::SetpointRunning() const
+{
+  return setpoint_loop_timer_ != nullptr;
 }
 
 void ControllerBase::TrajSetpointCallback()

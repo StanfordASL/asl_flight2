@@ -167,6 +167,13 @@ protected:
   void SetVelocity(const Eigen::Vector3d & velocity, const double & yaw_rate = 0);
 
   /**
+   * @brief send target acceleration to flight controller
+   *
+   * @param acceleration  3D acceleration in global NED frame
+   */
+  void SetAcceleration(const Eigen::Vector3d & acceleration);
+
+  /**
    * @brief send target altitude to flight controller
    *
    * @param altitude altitude in [m] (positive going upwards)
@@ -296,6 +303,13 @@ protected:
    * @return true if offboard control is enabled
    */
   bool OffboardEnabled() const;
+
+  /**
+   * @brief check if any setpoint loop is running
+   *
+   * @return true if setpoint_loop_timer_ is not nullptr
+   */
+  bool SetpointRunning() const;
 
 private:
   // Callbacks

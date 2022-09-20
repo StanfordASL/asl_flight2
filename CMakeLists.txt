@@ -15,6 +15,7 @@
 cmake_minimum_required(VERSION 3.8)
 project(asl_flight2)
 
+
 if(NOT CMAKE_CXX_STANDARD)
     set(CMAKE_CXX_STANDARD 17)
     set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -23,6 +24,7 @@ endif()
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
+
 
 # find global dependencies
 find_package(ament_cmake REQUIRED)
@@ -39,10 +41,13 @@ find_package(tf2_ros REQUIRED)
 # find local dependencies
 find_package(px4_msgs REQUIRED)
 
+
+# linting / style checking
 if(BUILD_TESTING)
     find_package(ament_lint_auto REQUIRED)
     ament_lint_auto_find_test_dependencies()
 endif()
+
 
 # libraries
 add_library(control src/control/controller_base.cpp)
@@ -58,14 +63,21 @@ add_library(mocap src/mocap/mocap_relay.cpp)
 ament_target_dependencies(mocap
     rclcpp px4_msgs geometry_msgs tf2 tf2_ros tf2_geometry_msgs)
 
+
 # examples
 add_executable(example_takeoff src/examples/takeoff.cpp)
 target_link_libraries(example_takeoff control)
+
+add_executable(example_figure8 src/examples/figure8.cpp)
+ament_target_dependencies(example_figure8 sensor_msgs)
+target_link_libraries(example_figure8 control)
+
 
 # PS4 RC Control
 add_executable(controller_ps4 src/control/controller_ps4.cpp)
 ament_target_dependencies(controller_ps4 sensor_msgs)
 target_link_libraries(controller_ps4 control)
+
 
 # Simulation grountruth publisher
 find_package(gazebo QUIET)
@@ -76,13 +88,16 @@ if(gazebo_FOUND)
     install(TARGETS mocap_relay_sim DESTINATION lib/${PROJECT_NAME})
 endif()
 
+
 # VRPN mocap relay
 add_executable(mocap_relay_vrpn src/mocap/mocap_relay_vrpn.cpp)
 target_link_libraries(mocap_relay_vrpn mocap)
 
+
 # install executable
 install(TARGETS
     example_takeoff
+    example_figure8
     controller_ps4
     mocap_relay_vrpn
     DESTINATION lib/${PROJECT_NAME})

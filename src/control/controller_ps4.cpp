@@ -17,30 +17,11 @@
 #include <string>
 
 #include "asl_flight2/controller_base.hpp"
+#include "asl_flight2/ps4_def.hpp"
 
 #include "sensor_msgs/msg/joy.hpp"
 
 using namespace std::chrono_literals;
-
-enum ps4_axes_e
-{
-  LEFT_LR = 0,
-  LEFT_UD,
-  L2,
-  RIGHT_LR,
-  RIGHT_UD,
-  R2,
-};
-
-enum ps4_btn_e
-{
-  X = 0,
-  O,
-  TRIANGLE,
-  SQUARE,
-  L1,
-  R1,
-};
 
 class PS4Controller : public asl::ControllerBase
 {
