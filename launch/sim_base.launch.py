@@ -13,11 +13,17 @@
 # limitations under the License.
 
 from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument
+from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 
 def generate_launch_description():
+    model_name_launch_arg = DeclareLaunchArgument('model_name', default_value='iris',
+                                                  description='name of the drone in gazebo')
+
     return LaunchDescription([
+        model_name_launch_arg,
         Node(
             package='tf2_ros',
             executable='static_transform_publisher',
@@ -27,6 +33,8 @@ def generate_launch_description():
             package='asl_flight2',
             namespace='asl',
             executable='mocap_relay_sim',
-            output='screen',
+            parameters=[{
+                'model_name': LaunchConfiguration('model_name'),
+            }],
         ),
     ])
