@@ -70,7 +70,7 @@ def generate_launch_description():
         ),
         Node(
             package='asl_flight2',
-            namespace=LaunchConfiguration('name'),
+            # namespace=LaunchConfiguration('name'),
             executable='example_figure8',
             output='screen',
         ),

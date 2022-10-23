@@ -31,7 +31,7 @@ def generate_launch_description():
         ),
         Node(
             package='asl_flight2',
-            namespace=LaunchConfiguration('model_name'),
+            # namespace=LaunchConfiguration('model_name'),
             executable='mocap_relay_sim',
             parameters=[{
                 'model_name': LaunchConfiguration('model_name'),

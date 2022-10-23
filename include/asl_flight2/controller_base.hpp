@@ -25,7 +25,6 @@
 
 #include "geometry_msgs/msg/pose_with_covariance_stamped.hpp"
 #include "px4_msgs/msg/offboard_control_mode.hpp"
-#include "px4_msgs/msg/timesync.hpp"
 #include "px4_msgs/msg/trajectory_setpoint.hpp"
 #include "px4_msgs/msg/vehicle_attitude_setpoint.hpp"
 #include "px4_msgs/msg/vehicle_command.hpp"
@@ -100,6 +99,8 @@ public:
   }
 
 protected:
+  const rclcpp::QoS fmu_qos_;
+
   // vehicle states
   px4_msgs::msg::VehicleOdometry::SharedPtr vehicle_odom_;
   px4_msgs::msg::VehicleControlMode::SharedPtr vehicle_ctrl_mode_;

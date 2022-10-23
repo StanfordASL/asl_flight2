@@ -74,7 +74,7 @@ def generate_launch_description():
         ),
         Node(
             package='asl_flight2',
-            namespace=LaunchConfiguration('name'),
+            # namespace=LaunchConfiguration('name'),
             executable='controller_ps4',
             output='screen',
             parameters=[{

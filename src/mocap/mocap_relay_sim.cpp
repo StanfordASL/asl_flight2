@@ -24,8 +24,6 @@
 
 #include "rclcpp/rclcpp.hpp"
 
-#include "px4_msgs/msg/vehicle_visual_odometry.hpp"
-
 class MocapRelaySim : public asl::MocapRelay
 {
 public:

@@ -23,10 +23,14 @@
 #include "tf2/time.h"
 #include "tf2_ros/transform_listener.h"
 #include "tf2_ros/buffer.h"
+#ifdef ROS2_NEW_API
+#include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
+#else
 #include "tf2_geometry_msgs/tf2_geometry_msgs.h"
+#endif
 
 #include "geometry_msgs/msg/pose_stamped.hpp"
-#include "px4_msgs/msg/vehicle_visual_odometry.hpp"
+#include "px4_msgs/msg/vehicle_odometry.hpp"
 
 namespace asl
 {
@@ -53,7 +57,7 @@ private:
   const std::string world_frame_;
   const std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
   const std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
-  rclcpp::Publisher<px4_msgs::msg::VehicleVisualOdometry>::SharedPtr odom_pub_;
+  rclcpp::Publisher<px4_msgs::msg::VehicleOdometry>::SharedPtr odom_pub_;
 };
 
 }  // namespace asl

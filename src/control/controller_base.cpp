@@ -27,7 +27,11 @@
 #include "px4_msgs/msg/vehicle_rates_setpoint.hpp"
 #include "px4_msgs/msg/vehicle_status.hpp"
 
+#ifdef ROS2_NEW_API
+#include "tf2_eigen/tf2_eigen.hpp"
+#else
 #include "tf2_eigen/tf2_eigen.h"
+#endif
 
 namespace asl
 {
@@ -57,6 +61,7 @@ VehicleState::VehicleState(const VehicleOdometry & odom)
 
 ControllerBase::ControllerBase(const std::string & node_name, const size_t qos_history_depth)
 : rclcpp::Node(node_name),
+  fmu_qos_(rclcpp::QoS(qos_history_depth).best_effort().transient_local()),
   vehicle_odom_(nullptr),
   vehicle_ctrl_mode_(nullptr),
   vehicle_status_(nullptr),
@@ -71,8 +76,8 @@ ControllerBase::ControllerBase(const std::string & node_name, const size_t qos_h
     } ()),
   sub_ctrl_mode_(
     create_subscription<VehicleControlMode>(
-      "fmu/vehicle_control_mode/out",
-      qos_history_depth,
+      "fmu/out/vehicle_control_mode",
+      fmu_qos_,
       [this](const VehicleControlMode::SharedPtr msg) {
         std::lock_guard<std::mutex> lock(vehicle_ctrl_mode_mtx_);
         vehicle_ctrl_mode_ = msg;
@@ -81,15 +86,15 @@ ControllerBase::ControllerBase(const std::string & node_name, const size_t qos_h
     )),
   sub_odom_(
     create_subscription<VehicleOdometry>(
-      "fmu/vehicle_odometry/out",
-      qos_history_depth,
+      "fmu/out/vehicle_odometry",
+      fmu_qos_,
       std::bind(&ControllerBase::VehicleOdometryCallback, this, _1),
       parallel_sub_options_
     )),
   sub_status_(
     create_subscription<VehicleStatus>(
-      "fmu/vehicle_status/out",
-      qos_history_depth,
+      "fmu/out/vehicle_status",
+      fmu_qos_,
       [this](const VehicleStatus::SharedPtr msg) {
         std::lock_guard<std::mutex> lock(vehicle_status_mtx_);
         vehicle_status_ = msg;
@@ -99,19 +104,19 @@ ControllerBase::ControllerBase(const std::string & node_name, const size_t qos_h
   pose_pub_(create_publisher<PoseWithCovarianceStamped>("pose", qos_history_depth)),
   offboard_mode_pub_(
     create_publisher<OffboardControlMode>(
-      "fmu/offboard_control_mode/in", qos_history_depth)),
+      "fmu/in/offboard_control_mode", fmu_qos_)),
   trajectory_pub_(
     create_publisher<TrajectorySetpoint>(
-      "fmu/trajectory_setpoint/in", qos_history_depth)),
+      "fmu/in/trajectory_setpoint", fmu_qos_)),
   attitude_pub_(
     create_publisher<VehicleAttitudeSetpoint>(
-      "fmu/vehicle_attitude_setpoint/in", qos_history_depth)),
+      "fmu/in/vehicle_attitude_setpoint", fmu_qos_)),
   rates_pub_(
     create_publisher<VehicleRatesSetpoint>(
-      "fmu/vehicle_rates_setpoint/in", qos_history_depth)),
+      "fmu/in/vehicle_rates_setpoint", fmu_qos_)),
   vehicle_cmd_pub_(
     create_publisher<VehicleCommand>(
-      "fmu/vehicle_command/in", qos_history_depth)) {
+      "fmu/in/vehicle_command", fmu_qos_)) {
   ob_ctrl_mode_.position = false;
   ob_ctrl_mode_.velocity = false;
   ob_ctrl_mode_.acceleration = false;

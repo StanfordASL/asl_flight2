@@ -25,12 +25,16 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
+if($ENV{ROS_DISTRO} STREQUAL "humble" OR $ENV{ROS_DISTRO} STREQUAL "rolling")
+    add_compile_definitions(ROS2_NEW_API)
+endif()
+
 
 # find global dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(eigen3_cmake_module REQUIRED)
-find_package(Eigen3 REQUIRED NO_MODULE)
+find_package(Eigen3 REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(tf2 REQUIRED)
@@ -82,8 +86,9 @@ target_link_libraries(controller_ps4 control)
 # Simulation grountruth publisher
 find_package(gazebo QUIET)
 if(gazebo_FOUND)
+    message("Gazebo found. Will build mocap_relay_sim")
     add_executable(mocap_relay_sim src/mocap/mocap_relay_sim.cpp)
-    target_link_libraries(mocap_relay_sim ${GAZEBO_LIBRARIES} mocap)
+    target_link_libraries(mocap_relay_sim ${GAZEBO_LIBRARIES} mocap tbb) # Gazebo doesn't handle tbb properly
     target_include_directories(mocap_relay_sim PUBLIC ${GAZEBO_INCLUDE_DIRS})
     install(TARGETS mocap_relay_sim DESTINATION lib/${PROJECT_NAME})
 endif()

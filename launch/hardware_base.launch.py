@@ -46,7 +46,7 @@ def generate_launch_description():
         ),
         Node(
             package='asl_flight2',
-            namespace=LaunchConfiguration('vrpn_name'),
+            # namespace=LaunchConfiguration('vrpn_name'),
             executable='mocap_relay_vrpn',
             output='screen',
             parameters=[{
