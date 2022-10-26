@@ -1,13 +1,9 @@
 repositories:
   px4_msgs:
     type: git
-    url: https://github.com/alvinsunyixiao/px4_msgs.git
+    url: https://github.com/PX4/px4_msgs.git
     version: main
   px4_ros_com:
     type: git
-    url: https://github.com/alvinsunyixiao/px4_ros_com.git
-    version: main
-  vrpn_mocap:
-    type: git
-    url: https://github.com/alvinsunyixiao/vrpn_mocap.git
+    url: https://github.com/PX4/px4_ros_com.git
     version: main
