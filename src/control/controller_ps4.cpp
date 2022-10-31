@@ -17,7 +17,7 @@
 #include <string>
 
 #include "asl_flight2/controller_base.hpp"
-#include "asl_flight2/ps4_def.hpp"
+#include "asl_flight2/joy_def.hpp"
 
 #include "sensor_msgs/msg/joy.hpp"
 
