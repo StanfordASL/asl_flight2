@@ -60,11 +60,11 @@ private:
             pose_tmp.position().y(),
             pose_tmp.position().z())
         );
-        const tf2::Transform nwu_T_neu(tf2::Quaternion(1, 0, 0, 0));
-        const tf2::Transform world_nwu_T_body_neu = world_nwu_T_body_nwu * nwu_T_neu;
+        const tf2::Transform nwu_T_ned(tf2::Quaternion(1, 0, 0, 0));
+        const tf2::Transform world_nwu_T_body_ned = world_nwu_T_body_nwu * nwu_T_ned;
 
         geometry_msgs::msg::PoseStamped pose_stamped{};
-        tf2::toMsg(world_nwu_T_body_neu, pose_stamped.pose);
+        tf2::toMsg(world_nwu_T_body_ned, pose_stamped.pose);
 
         pose_stamped.header.stamp = now;
         pose_stamped.header.frame_id = "world_nwu";

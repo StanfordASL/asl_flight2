@@ -16,6 +16,7 @@
 #include <memory>
 #include <sstream>
 #include <string>
+#include <tf2/LinearMath/Quaternion.h>
 
 #include "mocap_relay.hpp"
 
@@ -47,11 +48,11 @@ private:
   {
     tf2::Transform world_nwu_T_body_nwu;
     tf2::fromMsg(msg->pose, world_nwu_T_body_nwu);
-    const tf2::Transform nwu_T_neu(tf2::Quaternion(1, 0, 0, 0));
-    const tf2::Transform world_nwu_T_body_neu = world_nwu_T_body_nwu * nwu_T_neu;
+    const tf2::Transform nwu_T_ned(tf2::Quaternion(1, 0, 0, 0));
+    const tf2::Transform world_nwu_T_body_ned = world_nwu_T_body_nwu * nwu_T_ned;
 
     PoseStamped pose_stamped = *msg;
-    tf2::toMsg(world_nwu_T_body_neu, pose_stamped.pose);
+    tf2::toMsg(world_nwu_T_body_ned, pose_stamped.pose);
 
     this->PublishPose(pose_stamped);
   }
