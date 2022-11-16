@@ -76,6 +76,8 @@ add_executable(example_figure8 src/examples/figure8.cpp)
 ament_target_dependencies(example_figure8 sensor_msgs)
 target_link_libraries(example_figure8 control)
 
+add_executable(example_offboard_control src/examples/offboard_control.cpp)
+target_link_libraries(example_offboard_control control)
 
 # PS4 RC Control
 add_executable(controller_ps4 src/control/controller_ps4.cpp)
@@ -103,6 +105,7 @@ target_link_libraries(mocap_relay_vrpn mocap)
 install(TARGETS
     example_takeoff
     example_figure8
+    example_offboard_control
     controller_ps4
     mocap_relay_vrpn
     DESTINATION lib/${PROJECT_NAME})
