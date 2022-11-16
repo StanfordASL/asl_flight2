@@ -27,10 +27,12 @@ def generate_launch_description():
         vrpn_name_launch_arg,
         vrpn_server_launch_arg,
         Node(
+            name='vrpn_server',
             package='vrpn_mocap',
             executable='client_node',
+            namespace='vrpn',
             parameters=[{
-                'server': LaunchConfiguration('vrpn_server'),
+                'server': "192.168.50.102",
                 'port': 3883,
                 'frame_id': 'world_nwu',
                 'update_freq': 100.,

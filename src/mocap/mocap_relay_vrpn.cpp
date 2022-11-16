@@ -35,7 +35,7 @@ public:
   {
     std::stringstream vrpn_channel_name;
     vrpn_channel_name <<
-      "/vrpn_mocap/client_node/" <<
+      "/vrpn/" <<
       this->declare_parameter<std::string>("vrpn_name", "asl_drone") <<
       "/pose";
     pose_sub_ = this->create_subscription<PoseStamped>(
