@@ -1,4 +1,4 @@
-name: foxy build
+name: rolling build
 
 on:
   push:
@@ -10,7 +10,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - name: cancle preivious run
         uses: styfle/cancel-workflow-action@0.10.0
@@ -20,16 +20,16 @@ jobs:
       - name: Setup cmake
         uses: jwlawson/actions-setup-cmake@v1.12
         with:
-          cmake-version: '3.16.x'
+          cmake-version: '3.22.x'
       - name: setup ROS2
         uses: ros-tooling/setup-ros@v0.4
         with:
-          required-ros-distributions: foxy
+          required-ros-distributions: rolling
       - name: install apt dependencies
         uses: awalsh128/cache-apt-pkgs-action@latest
         with:
           packages: openjdk-11-jdk python3-pip python3-colcon-common-extensions
-          version: foxy-1.1.0
+          version: rolling-1.1.0
       - name: install pip dependencies
         run: |
           sudo pip3 install -U empy pyros-genmsg setuptools
@@ -37,5 +37,5 @@ jobs:
         uses: ros-tooling/action-ros-ci@v0.2
         with:
           package-name: asl_flight2
-          target-ros2-distro: foxy
+          target-ros2-distro: rolling
           vcs-repo-file-url: https://raw.githubusercontent.com/StanfordASL/asl_flight2/main/.github/ros2.repos
