@@ -16,7 +16,6 @@
 #include <memory>
 #include <sstream>
 #include <string>
-#include <tf2/LinearMath/Quaternion.h>
 
 #include "mocap_relay.hpp"
 
