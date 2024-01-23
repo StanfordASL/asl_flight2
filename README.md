@@ -10,3 +10,10 @@ This is a ROS2 package. The suggested folder structure is given below.
     |   |   |── px4_ros_com
     |   |── ...
     |── ...
+
+
+# to run sim
+in a new terminal run
+```MicroXRCEAgent udp4 -p 8888```
+then start the sim in a new terminal using 
+```make px4_sitl gz_x500```
